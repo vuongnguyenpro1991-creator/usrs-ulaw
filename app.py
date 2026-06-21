@@ -1,164 +1,200 @@
 import streamlit as st
+import pandas as pd
 
-# 1. CẤU HÌNH TRANG WEB (Loại bỏ khoảng trắng thừa, thiết kế mở rộng)
-st.set_page_config(page_title="Cổng Tra cứu Thông tin - ULAW", page_icon="🏛️", layout="wide", initial_sidebar_state="collapsed")
+# 1. CẤU HÌNH TRANG WEB
+st.set_page_config(page_title="ULAW Smart Reference System", layout="wide", initial_sidebar_state="expanded")
 
-# 2. TÙY CHỈNH CSS CHUYÊN SÂU (Mô phỏng cấu trúc Portal Thư viện)
+# 2. TÙY CHỈNH CSS CHUYÊN SÂU THEO BẢN THIẾT KẾ
 st.markdown("""
 <style>
-    /* Reset padding mặc định của Streamlit để giao diện tràn viền đẹp hơn */
-    .block-container {padding-top: 1rem; padding-bottom: 0rem; max-width: 1200px;}
+    /* Reset & Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    html, body, [class*="css"] {font-family: 'Inter', sans-serif;}
     
-    /* Phông chữ */
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
-    html, body, [class*="css"] {font-family: 'Roboto', sans-serif;}
-
-    /* HEADER - THANH ĐIỀU HƯỚNG TRÊN CÙNG */
-    .top-header {
-        background-color: #003366; /* Xanh ULAW */
-        color: white;
-        padding: 12px 24px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-radius: 8px 8px 0 0;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-    .top-header-logo {font-size: 18px; font-weight: 700; letter-spacing: 1px;}
-    .top-header-links a {
-        color: white; 
-        text-decoration: none; 
-        margin-left: 25px; 
-        font-size: 14px; 
-        font-weight: 500;
-        transition: opacity 0.3s;
-    }
-    .top-header-links a:hover {opacity: 0.7;}
-
-    /* HERO SECTION - KHU VỰC GIỚI THIỆU */
-    .hero-section {
-        background-color: #f8f9fa;
-        padding: 35px;
-        border-radius: 8px;
-        border: 1px solid #e0e0e0;
-        margin-bottom: 25px;
-    }
-    .hero-title {color: #003366; font-size: 26px; font-weight: 700; margin-bottom: 15px;}
-    .hero-text {color: #444; font-size: 16px; margin-bottom: 25px; line-height: 1.6;}
-    .quote-box {
-        font-style: italic; color: #555; font-size: 15px; 
-        border-left: 4px solid #cc9900; /* Màu vàng Gold ULAW */
-        padding-left: 15px; margin-bottom: 25px;
-    }
-
-    /* ACTION BUTTONS - 4 NÚT CHỨC NĂNG (Giống ảnh mẫu) */
-    .action-row {display: flex; justify-content: space-between; gap: 20px; margin-bottom: 10px;}
-    .action-card {
-        flex: 1; text-align: center; border: 1.5px solid #003366; color: #003366;
-        padding: 12px; border-radius: 6px; font-weight: 600; font-size: 15px;
-        background-color: white; cursor: pointer; transition: all 0.3s;
-    }
-    .action-card:hover {background-color: #003366; color: white;}
-
-    /* KHU VỰC NHẬP LIỆU (FORM) */
-    .form-container {
-        border: 1px solid #dcdcdc; padding: 25px; border-radius: 8px;
-        background-color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-    .form-title {color: #003366; font-size: 20px; font-weight: 700; margin-bottom: 20px; border-bottom: 2px solid #cc9900; padding-bottom: 10px; display: inline-block;}
+    /* Màu nền chính */
+    .stApp {background-color: #f4f6f9;}
     
-    /* FOOTER */
-    .footer-section {
-        background-color: #003366; color: white; padding: 40px 30px;
-        display: flex; justify-content: space-between; border-radius: 8px; margin-top: 50px;
+    /* Ẩn header mặc định của Streamlit */
+    header {visibility: hidden;}
+    
+    /* SIDEBAR (Cột trái màu xanh đậm) */
+    [data-testid="stSidebar"] {background-color: #2b3b7c; color: white;}
+    [data-testid="stSidebar"] * {color: white !important;}
+    
+    /* HERO BANNER */
+    .hero-banner {
+        background: linear-gradient(135deg, #e8f0fe 0%, #ffffff 100%);
+        padding: 30px; border-radius: 10px; margin-top: -50px; margin-bottom: 20px;
+        border: 1px solid #d2e3fc; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
     }
-    .footer-col {flex: 1; margin: 0 15px;}
-    .footer-title {font-weight: 700; font-size: 16px; border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 10px; margin-bottom: 20px; letter-spacing: 1px;}
-    .footer-text {font-size: 14px; margin-bottom: 10px; color: #e0e0e0;}
+    .hero-title-small {color: #1a237e; font-weight: 700; font-size: 16px; letter-spacing: 1px;}
+    .hero-title-large {color: #1a237e; font-weight: 800; font-size: 32px; margin: 10px 0;}
+    .hero-subtitle {color: #5f6368; font-size: 16px;}
+    
+    /* PROGRESS BAR (Thanh 4 bước) */
+    .step-container {
+        display: flex; justify-content: space-between; background: white; 
+        padding: 15px 30px; border-radius: 10px; margin-bottom: 20px;
+        border: 1px solid #e0e0e0; box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    }
+    .step-item {display: flex; align-items: center; font-weight: 600; color: #5f6368; font-size: 14px;}
+    .step-circle {
+        background-color: #e8eaf6; color: #3f51b5; width: 30px; height: 30px; 
+        border-radius: 50%; display: flex; justify-content: center; align-items: center; 
+        margin-right: 10px; font-weight: bold;
+    }
+    .step-active .step-circle {background-color: #3f51b5; color: white;}
+    .step-active {color: #3f51b5;}
+    
+    /* NÚT BẤM (Màu cam cho nút Xuất báo cáo, Xanh cho nút Tiếp tục) */
+    .btn-blue button {background-color: #2962ff !important; color: white !important; width: 100%; border-radius: 6px !important;}
+    .btn-orange button {background-color: #f57c00 !important; color: white !important; width: 100%; border-radius: 6px !important;}
+    .btn-outline button {background-color: white !important; color: #3f51b5 !important; border: 1px solid #3f51b5 !important; width: 100%;}
+    
+    /* Định dạng cột (Cards) */
+    div[data-testid="stVerticalBlock"] > div[style*="flex-direction: column;"] > div[data-testid="stVerticalBlock"] {
+        background-color: white; padding: 20px; border-radius: 10px; border: 1px solid #e0e0e0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+    
+    /* Tiêu đề Card */
+    .card-header {font-weight: 700; color: #1a237e; font-size: 16px; margin-bottom: 15px; display: flex; align-items: center;}
 </style>
 """, unsafe_allow_html=True)
 
-# 3. HEADER (Thanh điều hướng giống Portal)
+# 3. SIDEBAR (Cột trái)
+with st.sidebar:
+    st.markdown("### 🏛️ THƯ VIỆN ULAW")
+    st.markdown("---")
+    st.markdown("🏠 Trang chủ")
+    st.markdown("📝 Tạo yêu cầu tra cứu")
+    st.markdown("⏱️ Lịch sử yêu cầu")
+    st.markdown("📁 Kho báo cáo")
+    st.markdown("ℹ️ Hướng dẫn sử dụng")
+    st.markdown("❓ Câu hỏi thường gặp")
+    st.markdown("<br><br><br><br><br><br>", unsafe_allow_html=True)
+    st.markdown("---")
+    st.markdown("📞 (028) 3720 6509")
+    st.markdown("✉️ thuvien@hcmulaw.edu.vn")
+    st.markdown("🕒 Thứ 2 - Thứ 6: 07:30 - 21:00")
+
+# 4. HERO BANNER
 st.markdown("""
-<div class="top-header">
-    <div class="top-header-logo">🏛️ THƯ VIỆN TRƯỜNG ĐH LUẬT TP.HCM</div>
-    <div class="top-header-links">
-        <a href="#">Trang chủ</a>
-        <a href="#">Danh mục lưu</a>
-        <a href="#">Lịch sử tra cứu</a>
-        <a href="#">👤 Đăng nhập (Thủ thư)</a>
-    </div>
+<div class="hero-banner">
+    <div class="hero-title-small">ULAW SMART REFERENCE SYSTEM</div>
+    <div class="hero-title-large">TRA CỨU THÔNG TIN THEO YÊU CẦU</div>
+    <div class="hero-subtitle">Hệ thống giúp Thủ thư tra cứu, tổng hợp và xuất báo cáo tài liệu một cách tự động, chính xác và nhanh chóng.</div>
 </div>
 """, unsafe_allow_html=True)
 
-# 4. HERO SECTION & 4 NÚT TÍNH NĂNG CHÍNH
+# 5. THANH TIẾN TRÌNH 4 BƯỚC
 st.markdown("""
-<div class="hero-section">
-    <div class="hero-title">Chào mừng đến với Cổng tra cứu thông tin thông minh (USRS)</div>
-    <div class="hero-text">Hệ thống hỗ trợ cán bộ thư viện tự động hóa quy trình phân tích đề tài, tra cứu thư mục, loại bỏ trùng lặp và xuất báo cáo chuẩn định dạng ULAW.</div>
-    <div class="quote-box">"Sứ mệnh của chúng tôi là kết nối tri thức pháp lý, xây dựng nền tảng nghiên cứu học thuật chuẩn mực."</div>
-    <div class="action-row">
-        <div class="action-card">🔍 Tra cứu Học thuật (USRS)</div>
-        <div class="action-card">🌐 CSDL Điện tử (OPAC)</div>
-        <div class="action-card">❓ Trợ giúp (FAQs)</div>
-        <div class="action-card">✉️ Liên hệ Thủ thư</div>
-    </div>
+<div class="step-container">
+    <div class="step-item step-active"><div class="step-circle">1</div> Khởi tạo yêu cầu</div>
+    <div class="step-item step-active"><div class="step-circle">2</div> AI đề xuất từ khóa</div>
+    <div class="step-item step-active"><div class="step-circle">3</div> Chọn nguồn tra cứu</div>
+    <div class="step-item step-active"><div class="step-circle" style="background-color:#f57c00;color:white;">4</div> Kiểm duyệt & xuất báo cáo</div>
 </div>
 """, unsafe_allow_html=True)
 
-# 5. KHU VỰC NHẬP LIỆU TRA CỨU CHÍNH TÂM
-st.markdown("<div class='form-container'>", unsafe_allow_html=True)
-st.markdown("<div class='form-title'>BẢNG ĐIỀU KHIỂN TRA CỨU ĐỀ TÀI</div>", unsafe_allow_html=True)
+# 6. BỐ CỤC 4 CỘT CHÍNH (Tương ứng 4 bước trong ảnh)
+col1, col2, col3, col4 = st.columns(4)
 
-col1, col2 = st.columns([1.5, 1]) # Chia cột linh hoạt hơn
-
+# CỘT 1: KHỞI TẠO YÊU CẦU
 with col1:
-    topic = st.text_input("TÊN ĐỀ TÀI NGHIÊN CỨU HOẶC TỪ KHÓA:", placeholder="Nhập tên đề tài cần phân tích...")
-    requester = st.text_input("TÊN NGƯỜI YÊU CẦU (TÁC GIẢ):", placeholder="VD: Trần Thị Xuân Thông")
+    with st.container(border=True):
+        st.markdown("<div class='card-header'>📋 1. KHỞI TẠO YÊU CẦU</div>", unsafe_allow_html=True)
+        topic = st.text_input("Tên đề tài nghiên cứu *", placeholder="Nhập tên đề tài...")
+        author = st.text_input("Tên người/nhóm yêu cầu *", placeholder="Nhập tên người yêu cầu...")
+        
+        st.caption("Khoảng thời gian xuất bản")
+        c1, c2 = st.columns(2)
+        with c1: year_start = st.number_input("Từ", value=2020, step=1, label_visibility="collapsed")
+        with c2: year_end = st.number_input("Đến", value=2026, step=1, label_visibility="collapsed")
+        
+        st.markdown("<br><br><br><br><br>", unsafe_allow_html=True) # Đệm khoảng trống
+        st.markdown("<div class='btn-blue'>", unsafe_allow_html=True)
+        st.button("Tiếp tục →", key="btn_step1", use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
+# CỘT 2: AI ĐỀ XUẤT TỪ KHÓA
 with col2:
-    # XỬ LÝ YÊU CẦU CỦA BẠN: Có giới hạn hoặc Không giới hạn thời gian
-    st.markdown("<p style='font-size: 14px; font-weight: 500; color: #31333F; margin-bottom: 5px;'>GIỚI HẠN THỜI GIAN TÀI LIỆU:</p>", unsafe_allow_html=True)
-    time_option = st.radio("Lựa chọn:", ["Tất cả các năm (Không giới hạn)", "Có giới hạn thời gian"], label_visibility="collapsed")
-    
-    if time_option == "Có giới hạn thời gian":
-        time_filter = st.slider("Chọn khoảng năm xuất bản:", 1990, 2026, (2015, 2026))
-    else:
-        st.info("💡 Hệ thống sẽ quét toàn bộ tài liệu từ trước đến nay.")
+    with st.container(border=True):
+        st.markdown("<div class='card-header'>💡 2. AI ĐỀ XUẤT TỪ KHÓA</div>", unsafe_allow_html=True)
+        st.multiselect("Chuyên ngành luật", ["Luật Dân sự", "Luật Thương mại", "Luật Đầu tư"], default=["Luật Dân sự", "Luật Thương mại", "Luật Đầu tư"])
+        st.multiselect("Từ khóa tiếng Việt", ["hợp đồng", "thanh toán", "tranh chấp"], default=["hợp đồng", "thanh toán", "tranh chấp"])
+        st.multiselect("Từ khóa tiếng Anh", ["contract", "payment", "dispute"], default=["contract", "payment", "dispute"])
+        st.multiselect("Từ khóa đặc thù", ["CISG", "FDCPA", "INCOTERMS"], default=["CISG", "FDCPA", "INCOTERMS"])
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        cb1, cb2 = st.columns(2)
+        with cb1:
+            st.markdown("<div class='btn-outline'>", unsafe_allow_html=True)
+            st.button("🔄 Đề xuất lại", use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+        with cb2:
+            st.markdown("<div class='btn-blue'>", unsafe_allow_html=True)
+            st.button("✓ Xác nhận", use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
-st.markdown("<br>", unsafe_allow_html=True)
+# CỘT 3: CHỌN NGUỒN TRA CỨU
+with col3:
+    with st.container(border=True):
+        st.markdown("<div class='card-header'>📚 3. CHỌN NGUỒN TRA CỨU</div>", unsafe_allow_html=True)
+        
+        st.caption("Nội bộ")
+        st.checkbox("OPAC Thư viện ULAW", value=True)
+        st.checkbox("Cơ sở dữ liệu nội sinh", value=True)
+        
+        st.caption("Liên kết")
+        st.checkbox("Thư viện ĐH Luật Hà Nội", value=True)
+        st.checkbox("Thư viện ĐHQG Hà Nội", value=True)
+        st.checkbox("Thư viện ĐH Kinh tế - Luật", value=True)
+        
+        st.caption("Quốc tế")
+        st.checkbox("HeinOnline", value=True)
+        st.checkbox("Westlaw", value=True)
+        
+        st.caption("Pháp quy")
+        st.checkbox("Thư viện Pháp luật", value=True)
+        st.checkbox("Luật Việt Nam", value=True)
+        
+        st.markdown("<div class='btn-blue'>", unsafe_allow_html=True)
+        st.button("Tiếp tục →", key="btn_step3", use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-# Thiết kế nút bấm Action cực kỳ nổi bật
-col_btn1, col_btn2, col_btn3 = st.columns([1, 1.5, 1])
-with col_btn2:
-    if st.button("PHÂN TÍCH ĐỀ TÀI & SINH TỪ KHÓA", type="primary", use_container_width=True):
-        if topic == "":
-            st.error("⚠️ Vui lòng nhập Tên đề tài trước khi thực hiện!")
-        else:
-            st.success(f"Đã tiếp nhận đề tài: '{topic}'")
-            st.info("Hệ thống đang kết nối Trí tuệ nhân tạo (Gemini AI)...")
+# CỘT 4: KIỂM DUYỆT & XUẤT BÁO CÁO
+with col4:
+    with st.container(border=True):
+        st.markdown("<div class='card-header'>🏠 4. KIỂM DUYỆT & XUẤT BÁO CÁO</div>", unsafe_allow_html=True)
+        
+        st.markdown("<small style='color:#5f6368;'>Tiến trình tra cứu: <b>78%</b></small>", unsafe_allow_html=True)
+        st.progress(78)
+        st.markdown("<small style='color:#5f6368;'>Đang truy vấn: HeinOnline... (5/8 nguồn)</small>", unsafe_allow_html=True)
+        
+        st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
+        st.markdown("<b>Kết quả tìm thấy: 128 tài liệu</b>", unsafe_allow_html=True)
+        
+        # Bảng dữ liệu mô phỏng
+        data = {
+            "#": [1, 2, 3, 4],
+            "Tiêu đề": ["Pháp luật về hợp đồng...", "Giải quyết tranh chấp...", "Thực tiễn áp dụng...", "Contract and dispute..."],
+            "Nguồn": ["ULAW", "UEL", "ĐH Luật HN", "HeinOnline"],
+            "Chọn": [True, True, True, True]
+        }
+        df = pd.DataFrame(data)
+        st.dataframe(df, hide_index=True, use_container_width=True)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<div class='btn-orange'>", unsafe_allow_html=True)
+        if st.button("📥 Xuất báo cáo DOCX chuẩn ULAW", use_container_width=True):
+            st.snow() # Hiệu ứng khi bấm nút xuất báo cáo
+        st.markdown("</div>", unsafe_allow_html=True)
 
-st.markdown("</div>", unsafe_allow_html=True)
-
-# 6. FOOTER (Thông tin liên hệ)
-st.markdown("""
-<div class="footer-section">
-    <div class="footer-col">
-        <div class="footer-title">GIỜ PHỤC VỤ</div>
-        <div class="footer-text"><strong>Thứ 2 - Thứ 6:</strong> 07:30 - 20:00</div>
-        <div class="footer-text"><strong>Thứ 7 & Chủ Nhật:</strong> 07:30 - 17:00</div>
-    </div>
-    <div class="footer-col">
-        <div class="footer-title">THÔNG TIN LIÊN HỆ</div>
-        <div class="footer-text">📞 Điện thoại: (028) 3940 0989</div>
-        <div class="footer-text">✉️ Email: thuvien@hcmulaw.edu.vn</div>
-        <div class="footer-text">📍 Trụ sở: Số 02 Nguyễn Tất Thành, Q.4, TP.HCM</div>
-    </div>
-    <div class="footer-col">
-        <div class="footer-title">KẾT NỐI</div>
-        <div class="footer-text">🌐 Website: lib.hcmulaw.edu.vn</div>
-        <div class="footer-text">🔵 Facebook: Thư viện ĐH Luật TP.HCM</div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+# 7. FOOTER 5 TÍNH NĂNG Ở ĐÁY
+st.markdown("---")
+f1, f2, f3, f4, f5 = st.columns(5)
+with f1: st.markdown("🚀 **Tự động hóa 80-90%**<br><small>Tiết kiệm thời gian tra cứu</small>", unsafe_allow_html=True)
+with f2: st.markdown("🧠 **AI thông minh**<br><small>Đề xuất từ khóa chính xác</small>", unsafe_allow_html=True)
+with f3: st.markdown("🛡️ **Kết quả chính xác**<br><small>Lọc trùng lặp, ưu tiên nguồn</small>", unsafe_allow_html=True)
+with f4: st.markdown("📄 **Báo cáo chuẩn ULAW**<br><small>Định dạng chính xác, thống kê</small>", unsafe_allow_html=True)
+with f5: st.markdown("🕒 **Lưu trữ & Tái sử dụng**<br><small>Lịch sử tra cứu, clone dễ dàng</small>", unsafe_allow_html=True)
