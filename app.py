@@ -76,8 +76,14 @@ KỶ LUẬT NGHIỆP VỤ:
 Trả về ĐÚNG JSON: {{"chuyen_nganh": ["..."], "tu_khoa_dinh": "...", "tu_khoa_vn": ["..."], "tu_khoa_en": ["..."], "tu_khoa_dac_thu": ["..."], "co_yeu_to_nuoc_ngoai": true/false}} không giải thích thêm."""
         
         response = model.generate_content(prompt)
-        text_result = response.text.strip().removeprefix("```json").removesuffix("
-```").strip()
+        text_result = response.text.strip()
+        
+        # Xử lý bóc tách JSON an toàn, không dùng removesuffix dễ bị cắt ngang
+        if text_result.startswith("```json"):
+            text_result = text_result[7:-3].strip()
+        elif text_result.startswith("```"):
+            text_result = text_result[3:-3].strip()
+            
         st.session_state.ai_data = json.loads(text_result)
         return True
     except Exception as e:
@@ -117,7 +123,6 @@ st.markdown("""
         border-left: 5px solid #2962ff;
     }
 
-    /* ĐÃ NÂNG CẤP MÀU SẮC CHO CHỮ TRONG HỘP TRUY VẤN */
     .query-preview-box {
         background-color: #0f172a; color: #bae6fd; padding: 12px; 
         border-radius: 6px; font-family: 'Courier New', Courier, monospace; 
@@ -126,7 +131,7 @@ st.markdown("""
     }
     .query-label {
         font-size: 13px; font-weight: 700; 
-        color: #fcd34d; /* MÀU VÀNG SÁNG NỔI BẬT */
+        color: #fcd34d;
         margin-top: 8px; margin-bottom: 4px; 
         text-transform: uppercase; letter-spacing: 0.5px; display: block;
     }
@@ -219,14 +224,13 @@ with col1:
                         st.success("✅ Phân tích thành công!")
         st.markdown("</div>", unsafe_allow_html=True)
 
-# ==================== CỘT 2: GIAO DIỆN MỚI THÔNG MINH HƠN ====================
 with col2:
     with st.container(border=True):
         st.markdown("<div class='card-header'>💡 2. AI ĐỀ XUẤT TỪ KHÓA</div>", unsafe_allow_html=True)
         
         ai = st.session_state.ai_data
         
-        # HIỂN THỊ TỪ KHÓA ĐINH (CORE KEYWORD)
+        # HIỂN THỊ TỪ KHÓA ĐINH
         st.markdown(f"""
         <div class='core-keyword-box'>
             <span style='color:#166534; font-weight:700; font-size:12px; text-transform:uppercase;'>🎯 Từ khóa đinh (Cốt lõi):</span><br>
@@ -238,7 +242,6 @@ with col2:
         
         # --- TIẾNG VIỆT ---
         sel_vn = st.multiselect("Từ khóa tiếng Việt", ai.get("tu_khoa_vn", []), default=ai.get("tu_khoa_vn", []))
-        
         st.text_input("➕ Thêm từ (Cách nhau bằng dấu phẩy, ấn Enter tự dịch):", key="input_vn_widget", on_change=on_add_vn, placeholder="VD: mã hóa dữ liệu...")
 
         if sel_vn and sel_vn[0] != "Đang chờ AI phân tích...":
@@ -251,7 +254,6 @@ with col2:
         
         # --- TIẾNG ANH ---
         sel_en = st.multiselect("Từ khóa tiếng Anh", ai.get("tu_khoa_en", []), default=ai.get("tu_khoa_en", []))
-        
         st.text_input("➕ Thêm từ Tiếng Anh (Ấn Enter):", key="input_en_widget", on_change=on_add_en, placeholder="VD: data encryption...")
 
         if sel_en and sel_en[0] != "Đang chờ AI phân tích...":
@@ -262,7 +264,7 @@ with col2:
                 en_queries.append(" AND ".join([f'"{kw}"' for kw in sel_en]))
             st.markdown(f"<div class='query-preview-box'>{'<br>'.join(en_queries)}</div>", unsafe_allow_html=True)
         
-        # --- ĐẶC THÙ (CHỈ HIỆN KHI CẦN) ---
+        # --- ĐẶC THÙ QUỐC TẾ ---
         sel_dac_thu = []
         if ai.get("co_yeu_to_nuoc_ngoai", False) and ai.get("tu_khoa_dac_thu", []) and ai["tu_khoa_dac_thu"][0] != "Đang chờ AI phân tích...":
             sel_dac_thu = st.multiselect("Từ khóa đặc thù (Quốc tế)", ai.get("tu_khoa_dac_thu", []), default=ai.get("tu_khoa_dac_thu", []))
@@ -290,7 +292,6 @@ with col2:
             st.button("✓ Xác nhận", use_container_width=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
-# ==================== CỘT 3 & 4 (GIỮ NGUYÊN) ====================
 with col3:
     with st.container(border=True):
         st.markdown("<div class='card-header'>📚 3. CHỌN NGUỒN TRA CỨU</div>", unsafe_allow_html=True)
