@@ -76,10 +76,12 @@ KỶ LUẬT NGHIỆP VỤ THƯ VIỆN BẮT BUỘC:
 Trả về ĐÚNG định dạng JSON: {{"chuyen_nganh": ["..."], "tu_khoa_vn": ["..."], "tu_khoa_en": ["..."], "tu_khoa_dac_thu": ["..."], "co_yeu_to_nuoc_ngoai": true/false}} không giải thích thêm."""
         
         response = model.generate_content(prompt)
+        text_result = response.text.strip()
         
-        # ĐÃ SỬA LỖI Ở ĐÂY: Dùng replace an toàn tuyệt đối, tránh lỗi SyntaxError khi copy code
-        text_result = response.text.replace("```json", "").replace("
-```", "").strip()
+        # ĐÃ SỬA LỖI: Dùng mẹo cộng chuỗi để tránh bị khung chat cắt ngang mã nguồn
+        text_result = text_result.replace("`" + "`" + "`" + "json", "")
+        text_result = text_result.replace("`" + "`" + "`", "")
+        text_result = text_result.strip()
             
         st.session_state.ai_data = json.loads(text_result)
         return True
@@ -90,7 +92,7 @@ Trả về ĐÚNG định dạng JSON: {{"chuyen_nganh": ["..."], "tu_khoa_vn": 
 # 2. TÙY CHỈNH CSS CHUYÊN SÂU
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('[https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap](https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap)');
     html, body, [class*="css"] {font-family: 'Inter', sans-serif;}
     .stApp {background-color: #f4f6f9;}
     header {visibility: hidden;}
@@ -99,7 +101,7 @@ st.markdown("""
     [data-testid="stSidebar"] * {color: white !important;}
     
     .hero-banner {
-        background-image: linear-gradient(rgba(26, 35, 126, 0.85), rgba(26, 35, 126, 0.85)), url('https://images.unsplash.com/photo-1507842217343-583bb7270b66?q=80&w=2000&auto=format&fit=crop');
+        background-image: linear-gradient(rgba(26, 35, 126, 0.85), rgba(26, 35, 126, 0.85)), url('[https://images.unsplash.com/photo-1507842217343-583bb7270b66?q=80&w=2000&auto=format&fit=crop](https://images.unsplash.com/photo-1507842217343-583bb7270b66?q=80&w=2000&auto=format&fit=crop)');
         background-size: cover; background-position: center;
         padding: 40px 30px; border-radius: 10px; margin-top: -50px; margin-bottom: 20px;
         text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
@@ -217,6 +219,7 @@ with col1:
                         st.success("✅ Phân tích thành công!")
         st.markdown("</div>", unsafe_allow_html=True)
 
+# ==================== CỘT 2: KHỐI TỪ KHÓA ĐÃ ĐƯỢC TINH CHỈNH BIẾN ĐỔI CHUỖI TÌM KIẾM CẶP ====================
 with col2:
     with st.container(border=True):
         st.markdown("<div class='card-header'>💡 2. AI ĐỀ XUẤT TỪ KHÓA</div>", unsafe_allow_html=True)
@@ -290,6 +293,7 @@ with col2:
             st.button("✓ Xác nhận", use_container_width=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
+# ==================== CỘT 3 & CỘT 4 (GIỮ NGUYÊN) ====================
 with col3:
     with st.container(border=True):
         st.markdown("<div class='card-header'>📚 3. CHỌN NGUỒN TRA CỨU</div>", unsafe_allow_html=True)
