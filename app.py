@@ -20,7 +20,7 @@ def call_gemini(topic):
     try:
         # Mở két sắt lấy API Key
         genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-        model = genai.GenerativeModel('gemini-1.5-flash') # Dùng model flash mới nhất cho tốc độ cực nhanh
+        model = genai.GenerativeModel('gemini-pro') # Dùng model flash mới nhất cho tốc độ cực nhanh
         
         # Ra lệnh cho AI
         prompt = f"""Bạn là một Chuyên gia Thư viện và Luật sư giỏi tại Đại học Luật TP.HCM.
