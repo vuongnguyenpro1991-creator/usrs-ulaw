@@ -3,6 +3,7 @@ import pandas as pd
 import google.generativeai as genai
 import json
 import time
+import itertools
 
 # 1. CẤU HÌNH TRANG WEB
 st.set_page_config(page_title="ULAW Smart Reference System", layout="wide", initial_sidebar_state="expanded")
@@ -64,15 +65,15 @@ def call_gemini(topic):
         genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
         model = genai.GenerativeModel('gemini-3.5-flash') 
         
-        # ĐÃ SỬA PROMPT: Ép AI đưa Từ khóa chính xác nhất lên đầu, chặt nhỏ các từ ghép dài
+        # ĐÃ SỬA PROMPT: DIỆT TỪ ĐỒNG NGHĨA
         prompt = f"""Bạn là một Chuyên gia Thư viện học tại Đại học Luật TP.HCM. 
 Nhiệm vụ: Phân tích đề tài sau để tạo bộ từ khóa tra cứu: "{topic}".
-KỶ LUẬT BẮT BUỘC MỚI:
-1. Mảng "tu_khoa_vn" và "tu_khoa_en":
-   - Phần tử ĐẦU TIÊN phải là 1 TỪ KHÓA CHÍNH xác nhất, mang tính cốt lõi của đề tài (VD: "giao dịch bảo đảm", "thanh toán điện tử").
-   - Các phần tử tiếp theo là TỪ KHÓA PHỤ dùng để làm sáng tỏ thêm (VD: "động sản", "ngân hàng thương mại", "khách hàng").
-2. CẤM tạo ra các từ khóa quá dài ghép nhiều vế (Sai: "bảo đảm bằng động sản tại ngân hàng", Đúng: tách thành "bảo đảm bằng động sản" và "ngân hàng").
-3. Nếu đề tài không có yếu tố quốc tế, "co_yeu_to_nuoc_ngoai": false, "tu_khoa_dac_thu": [].
+KỶ LUẬT NGHIỆP VỤ:
+1. Từ khóa ĐẦU TIÊN phải là TỪ KHÓA CHÍNH mang tính cốt lõi của đề tài (VD: "giao dịch bảo đảm", "thanh toán điện tử").
+2. TUYỆT ĐỐI KHÔNG LIỆT KÊ TỪ ĐỒNG NGHĨA (VD: Đã có "giao dịch bảo đảm" thì cấm tạo ra "biện pháp bảo đảm", "cầm cố"). 
+3. Các từ khóa tiếp theo PHẢI LÀ TỪ KHÓA PHỤ, chỉ các khía cạnh/đối tượng để làm sáng tỏ (VD: "động sản", "ngân hàng thương mại", "bảo vệ khách hàng").
+4. CẤM tạo ra các từ khóa quá dài ghép nhiều vế.
+5. Nếu không có yếu tố quốc tế, "co_yeu_to_nuoc_ngoai": false, "tu_khoa_dac_thu": [].
 Trả về ĐÚNG JSON: {{"chuyen_nganh": ["..."], "tu_khoa_vn": ["..."], "tu_khoa_en": ["..."], "tu_khoa_dac_thu": ["..."], "co_yeu_to_nuoc_ngoai": true/false}} không giải thích."""
         
         response = model.generate_content(prompt)
@@ -121,15 +122,14 @@ st.markdown("""
         border-left: 5px solid #2962ff;
     }
 
-    .query-preview-box {
-        background-color: #0f172a; color: #bae6fd; padding: 12px; 
-        border-radius: 6px; font-family: 'Courier New', Courier, monospace; 
-        font-size: 13px; margin-top: -10px; margin-bottom: 15px;
-        border-left: 4px solid #38bdf8; overflow-x: auto; line-height: 1.5;
-    }
-    .query-label {
-        font-size: 12.5px; font-weight: 700; color: #fcd34d; 
-        margin-top: 6px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; display: block;
+    /* ĐÃ NÂNG CẤP TEXTAREA (Ô CHO PHÉP SỬA LỆNH) THÀNH MÀU ĐEN GIỐNG CONSOLE */
+    textarea {
+        background-color: #0f172a !important; 
+        color: #bae6fd !important; 
+        font-family: 'Courier New', Courier, monospace !important; 
+        font-size: 13.5px !important; 
+        border-left: 4px solid #38bdf8 !important;
+        line-height: 1.5 !important;
     }
 
     .step-container {display: flex; justify-content: space-between; background: white; padding: 15px 30px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #e0e0e0;}
@@ -213,7 +213,7 @@ with col1:
                         st.success("✅ Phân tích thành công!")
         st.markdown("</div>", unsafe_allow_html=True)
 
-# ==================== CỘT 2: LOGIC TỪ KHÓA CHÍNH - PHỤ ====================
+# ==================== CỘT 2: KHỐI TỪ KHÓA MỚI ====================
 with col2:
     with st.container(border=True):
         st.markdown("<div class='card-header'>💡 2. AI ĐỀ XUẤT TỪ KHÓA</div>", unsafe_allow_html=True)
@@ -222,54 +222,54 @@ with col2:
         st.multiselect("Chuyên ngành luật", ai.get("chuyen_nganh", []), default=ai.get("chuyen_nganh", []))
         
         # --- TIẾNG VIỆT ---
-        st.markdown("<small style='color:#64748b;'><i>* Ghi chú: Có thể bấm dấu [x] để xóa từ khóa không chính xác. Từ khóa đầu tiên sẽ làm Từ khóa chính.</i></small>", unsafe_allow_html=True)
         sel_vn = st.multiselect("Từ khóa tiếng Việt", ai.get("tu_khoa_vn", []), default=ai.get("tu_khoa_vn", []))
-        st.text_input("➕ Thêm từ khác, sau đó nhấn Enter để thêm từ:", key="input_vn_widget", on_change=on_add_vn, placeholder="VD: giao dịch bảo đảm...")
+        st.text_input("➕ Thêm từ khác, sau đó nhấn Enter để thêm từ:", key="input_vn_widget", on_change=on_add_vn, placeholder="VD: bảo mật thông tin...")
 
         if sel_vn and sel_vn[0] != "Đang chờ AI phân tích...":
-            vn_queries = ["<span class='query-label'>🔸 Tìm đơn lẻ:</span>"]
-            for kw in sel_vn: vn_queries.append(f'"{kw}"')
+            # Xây dựng chuỗi văn bản cho ô TextBox chỉnh sửa
+            vn_text = "🔸 TÌM ĐƠN LẺ:\n"
+            for kw in sel_vn: vn_text += f'"{kw}"\n'
             
-            # ĐÃ ĐỔI THUẬT TOÁN: Lấy từ khóa ĐẦU TIÊN làm gốc, ghép với các từ khóa phụ
             if len(sel_vn) > 1:
-                vn_queries.append("<span class='query-label'>🔸 Tìm kết hợp (Từ khóa chính + Từ khóa phụ):</span>")
+                vn_text += "\n🔸 TÌM KẾT HỢP (Từ khóa chính + Từ khóa phụ):\n"
                 core_kw = sel_vn[0]
                 for sec_kw in sel_vn[1:]:
-                    vn_queries.append(f'"{core_kw}" AND "{sec_kw}"')
+                    vn_text += f'"{core_kw}" AND "{sec_kw}"\n'
                     
-            st.markdown(f"<div class='query-preview-box'>{'<br>'.join(vn_queries)}</div>", unsafe_allow_html=True)
+            st.caption("✍️ Tùy chỉnh chuỗi lệnh tra cứu (có thể gõ thêm/xóa bớt):")
+            st.text_area("Lệnh TV", value=vn_text.strip(), height=160, key="ta_vn", label_visibility="collapsed")
         
         # --- TIẾNG ANH ---
         sel_en = st.multiselect("Từ khóa tiếng Anh", ai.get("tu_khoa_en", []), default=ai.get("tu_khoa_en", []))
-        st.text_input("➕ Thêm từ khác, sau đó nhấn Enter để thêm từ:", key="input_en_widget", on_change=on_add_en, placeholder="VD: secured transaction...")
+        st.text_input("➕ Thêm từ khác, sau đó nhấn Enter để thêm từ (Tiếng Anh):", key="input_en_widget", on_change=on_add_en, placeholder="VD: data security...")
 
         if sel_en and sel_en[0] != "Đang chờ AI phân tích...":
-            en_queries = ["<span class='query-label'>🔸 Tìm đơn lẻ:</span>"]
-            for kw in sel_en: en_queries.append(f'"{kw}"')
+            en_text = "🔸 TÌM ĐƠN LẺ:\n"
+            for kw in sel_en: en_text += f'"{kw}"\n'
             
-            # Tương tự Tiếng Việt: Lấy từ tiếng Anh đầu tiên làm gốc ghép với các từ phụ
             if len(sel_en) > 1:
-                en_queries.append("<span class='query-label'>🔸 Tìm kết hợp (Từ khóa chính + Từ khóa phụ):</span>")
+                en_text += "\n🔸 TÌM KẾT HỢP (Từ khóa chính + Từ khóa phụ):\n"
                 core_kw_en = sel_en[0]
                 for sec_kw_en in sel_en[1:]:
-                    en_queries.append(f'"{core_kw_en}" AND "{sec_kw_en}"')
+                    en_text += f'"{core_kw_en}" AND "{sec_kw_en}"\n'
                     
-            st.markdown(f"<div class='query-preview-box'>{'<br>'.join(en_queries)}</div>", unsafe_allow_html=True)
+            st.caption("✍️ Tùy chỉnh chuỗi lệnh tra cứu Tiếng Anh:")
+            st.text_area("Lệnh EN", value=en_text.strip(), height=160, key="ta_en", label_visibility="collapsed")
         
         # --- ĐẶC THÙ QUỐC TẾ ---
         sel_dac_thu = []
         if ai.get("co_yeu_to_nuoc_ngoai", False) and ai.get("tu_khoa_dac_thu", []) and ai["tu_khoa_dac_thu"][0] != "Đang chờ AI phân tích...":
             sel_dac_thu = st.multiselect("Từ khóa đặc thù (Quốc tế)", ai.get("tu_khoa_dac_thu", []), default=ai.get("tu_khoa_dac_thu", []))
             if sel_dac_thu:
-                dt_queries = ["<span class='query-label'>🔸 Tìm đơn lẻ:</span>"]
-                for kw in sel_dac_thu: dt_queries.append(f'"{kw}"')
-                st.markdown(f"<div class='query-preview-box'>{'<br>'.join(dt_queries)}</div>", unsafe_allow_html=True)
-
-        # Ghép từ khóa chính (Việt) với Đặc thù quốc tế
-        if (sel_vn and sel_vn[0] != "Đang chờ AI phân tích...") and sel_dac_thu:
-            st.markdown("<hr style='margin:10px 0; border-top: 1px dashed #cbd5e1;'>", unsafe_allow_html=True)
-            combined = [f'"{sel_vn[0]}" AND "{sel_dac_thu[0]}"']
-            st.markdown(f"<div class='query-preview-box' style='background-color:#1e293b; border-left:4px solid #34d399;'><span class='query-label' style='color:#34d399;'>🔗 ĐỐI CHIẾU BỐI CẢNH QUỐC TẾ:</span><br>{'<br>'.join(combined)}</div>", unsafe_allow_html=True)
+                dt_text = "🔸 TÌM ĐƠN LẺ ĐẶC THÙ:\n"
+                for kw in sel_dac_thu: dt_text += f'"{kw}"\n'
+                
+                if sel_vn and sel_vn[0] != "Đang chờ AI phân tích...":
+                    dt_text += "\n🔸 ĐỐI CHIẾU BỐI CẢNH QUỐC TẾ:\n"
+                    dt_text += f'"{sel_vn[0]}" AND "{sel_dac_thu[0]}"'
+                    
+                st.caption("✍️ Tùy chỉnh chuỗi lệnh tra cứu đặc thù:")
+                st.text_area("Lệnh Đặc thù", value=dt_text.strip(), height=130, key="ta_dt", label_visibility="collapsed")
 
         st.markdown("<br>", unsafe_allow_html=True)
         cb1, cb2 = st.columns(2)
