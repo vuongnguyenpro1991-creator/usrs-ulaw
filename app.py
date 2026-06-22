@@ -53,7 +53,6 @@ def call_gemini(topic, mode):
         genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
         model = genai.GenerativeModel('gemini-3.5-flash') 
         
-        # ĐIỀU HƯỚNG AI DỰA TRÊN TÙY CHỌN NGÔN NGỮ CỦA NGƯỜI DÙNG
         mode_instruction = ""
         if mode == "Tiếng Việt":
             mode_instruction = """
@@ -137,6 +136,19 @@ st.markdown("""
         margin-top: 6px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; display: block;
     }
 
+    /* ĐÃ BỔ SUNG CSS CHO TIÊU ĐỀ NGUỒN TRA CỨU */
+    .source-category {
+        font-weight: 700;
+        color: #2b3b7c;
+        font-size: 13.5px;
+        margin-top: 18px;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        border-bottom: 1.5px solid #e2e8f0;
+        padding-bottom: 4px;
+        letter-spacing: 0.5px;
+    }
+
     .step-container {display: flex; justify-content: space-between; background: white; padding: 15px 30px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #e0e0e0;}
     .step-item {display: flex; align-items: center; font-weight: 600; color: #5f6368; font-size: 14px;}
     .step-circle {background-color: #e8eaf6; color: #3f51b5; width: 30px; height: 30px; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-right: 10px; font-weight: bold;}
@@ -149,7 +161,7 @@ st.markdown("""
     .btn-outline button {background-color: white !important; color: #3f51b5 !important; border: 1.5px solid #3f51b5 !important; width: 100%; border-radius: 8px !important; font-weight: 600 !important;}
     
     div[data-testid="stVerticalBlock"] > div[style*="flex-direction: column;"] > div[data-testid="stVerticalBlock"] {background-color: white; padding: 20px; border-radius: 10px; border: 1px solid #e0e0e0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);}
-    .scrollable-source {max-height: 380px; overflow-y: auto; padding-right: 10px;}
+    .scrollable-source {max-height: 480px; overflow-y: auto; padding-right: 10px;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -297,7 +309,8 @@ with col3:
         st.markdown("<div class='card-header'>📚 3. CHỌN NGUỒN TRA CỨU</div>", unsafe_allow_html=True)
         st.markdown("<div class='scrollable-source'>", unsafe_allow_html=True)
         
-        st.caption("Thư viện đại học")
+        # ĐÃ CẬP NHẬT GIAO DIỆN NỔI BẬT CHO CÁC TIÊU ĐỀ
+        st.markdown("<div class='source-category' style='margin-top: 0;'>Thư viện đại học</div>", unsafe_allow_html=True)
         src_ulaw = st.checkbox("Thư viện Trường Đại học Luật TP.HCM", value=True)
         src_uel = st.checkbox("Thư viện Trường Đại học Kinh tế - Luật", value=True)
         src_hl = st.checkbox("Thư viện Trường Đại học Luật Hà Nội", value=True)
@@ -306,20 +319,20 @@ with col3:
         src_ftu = st.checkbox("Thư viện Trường Đại học Ngoại thương", value=True)
         src_ctu = st.checkbox("Thư viện Đại học Cần Thơ", value=True)
 
-        st.caption("Thư viện quốc gia và công cộng")
+        st.markdown("<div class='source-category'>Thư viện quốc gia và công cộng</div>", unsafe_allow_html=True)
         src_nat = st.checkbox("Thư viện Quốc gia Việt Nam", value=True)
         src_gsc = st.checkbox("Thư viện Khoa học Tổng hợp TP.HCM", value=True)
 
-        st.caption("Cơ sở dữ liệu quốc tế")
+        st.markdown("<div class='source-category'>Cơ sở dữ liệu quốc tế</div>", unsafe_allow_html=True)
         src_hein = st.checkbox("HeinOnline", value=True)
         src_west = st.checkbox("Westlaw", value=True)
         src_oxf = st.checkbox("Oxford Academic", value=True)
 
-        st.caption("Nguồn văn bản pháp luật")
+        st.markdown("<div class='source-category'>Nguồn văn bản pháp luật</div>", unsafe_allow_html=True)
         src_lvn = st.checkbox("Luật Việt Nam", value=True)
         src_tvpl = st.checkbox("Thư Viện Pháp Luật", value=True)
 
-        st.caption("Các Website, CSDL chuyên ngành, đơn vị khác")
+        st.markdown("<div class='source-category'>Các Website, CSDL chuyên ngành, đơn vị khác</div>", unsafe_allow_html=True)
         src_gg = st.checkbox("Google", value=True)
         src_ggs = st.checkbox("Google Scholar", value=True)
         
