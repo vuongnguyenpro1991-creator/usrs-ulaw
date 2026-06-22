@@ -182,6 +182,14 @@ st.markdown("""
     .btn-outline button {background-color: white !important; color: #3f51b5 !important; border: 1.5px solid #3f51b5 !important; width: 100%; border-radius: 8px !important; font-weight: 600 !important;}
     div[data-testid="stVerticalBlock"] > div[style*="flex-direction: column;"] > div[data-testid="stVerticalBlock"] {background-color: white; padding: 20px; border-radius: 10px; border: 1px solid #e0e0e0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);}
     .scrollable-source {max-height: 380px; overflow-y: auto; padding-right: 10px;}
+    
+    /* STYLE MỚI CHO CÁC TIÊU ĐỀ PHÂN NHÓM CỘT 3 */
+    .source-category-title {
+        font-weight: 700; color: #1e293b; 
+        margin-top: 15px; margin-bottom: 5px; 
+        border-bottom: 1px solid #cbd5e1; padding-bottom: 3px; 
+        font-size: 13px; text-transform: uppercase;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -245,7 +253,7 @@ with col2:
                 vn_text += "\n🔸 TÌM KẾT HỢP:\n"
                 core_kw = sel_vn[0]
                 for sec_kw in sel_vn[1:]: vn_text += f'"{core_kw}" AND "{sec_kw}"\n'
-            st.caption("✍ shrink_box Lệnh tra cứu Tiếng Việt:")
+            st.caption("✍ Lệnh tra cứu Tiếng Việt (Có thể chỉnh sửa):")
             st.text_area("Lệnh TV", value=vn_text.strip(), height=160, key="ta_vn", label_visibility="collapsed")
         
         if st.session_state.applied_search_mode == "Tiếng Việt & Tiếng Anh":
@@ -260,7 +268,7 @@ with col2:
                     en_text += "\n🔸 TÌM KẾT HỢP:\n"
                     core_kw_en = sel_en[0]
                     for sec_kw_en in sel_en[1:]: en_text += f'"{core_kw_en}" AND "{sec_kw_en}"\n'
-                st.caption("✍ shrink_box Lệnh tra cứu Tiếng Anh:")
+                st.caption("✍ Lệnh tra cứu Tiếng Anh (Có thể chỉnh sửa):")
                 st.text_area("Lệnh EN", value=en_text.strip(), height=160, key="ta_en", label_visibility="collapsed")
             
             sel_dac_thu = []
@@ -272,7 +280,7 @@ with col2:
                     if sel_vn and sel_vn[0] != "Đang chờ AI phân tích...":
                         dt_text += "\n🔸 ĐỐI CHIẾU BỐI CẢNH QUỐC TẾ:\n"
                         dt_text += f'"{sel_vn[0]}" AND "{sel_dac_thu[0]}"'
-                    st.caption("✍ shrink_box Lệnh tra cứu Đặc thù:")
+                    st.caption("✍ Lệnh tra cứu Đặc thù (Có thể chỉnh sửa):")
                     st.text_area("Lệnh Đặc thù", value=dt_text.strip(), height=130, key="ta_dt", label_visibility="collapsed")
 
 with col3:
@@ -283,7 +291,8 @@ with col3:
         # Lưu các nguồn được chọn vào biến
         sources_selected = []
         
-        st.caption("Thư viện đại học")
+        # ĐÃ THAY ĐỔI: Dùng thẻ DIV tạo tiêu đề nổi bật phân biệt rõ với Checkbox
+        st.markdown("<div class='source-category-title'>Thư viện đại học</div>", unsafe_allow_html=True)
         if st.checkbox("Thư viện Trường Đại học Luật TP.HCM", value=True): sources_selected.append("Thư viện ĐH Luật TP.HCM")
         if st.checkbox("Thư viện Trường Đại học Kinh tế - Luật", value=True): sources_selected.append("Thư viện UEL")
         if st.checkbox("Thư viện Trường Đại học Luật Hà Nội", value=True): sources_selected.append("Thư viện ĐH Luật HN")
@@ -292,20 +301,20 @@ with col3:
         if st.checkbox("Thư viện Trường Đại học Ngoại thương"): sources_selected.append("Thư viện ĐH Ngoại thương")
         if st.checkbox("Thư viện Đại học Cần Thơ"): sources_selected.append("Thư viện ĐH Cần Thơ")
 
-        st.caption("Thư viện quốc gia và công cộng")
+        st.markdown("<div class='source-category-title'>Thư viện quốc gia và công cộng</div>", unsafe_allow_html=True)
         if st.checkbox("Thư viện Quốc gia Việt Nam", value=True): sources_selected.append("Thư viện Quốc gia")
         if st.checkbox("Thư viện Khoa học Tổng hợp TP.HCM"): sources_selected.append("Thư viện KHTH TP.HCM")
 
-        st.caption("Cơ sở dữ liệu quốc tế")
+        st.markdown("<div class='source-category-title'>Cơ sở dữ liệu quốc tế</div>", unsafe_allow_html=True)
         if st.checkbox("HeinOnline", value=True): sources_selected.append("HeinOnline")
         if st.checkbox("Westlaw", value=True): sources_selected.append("Westlaw")
         if st.checkbox("Oxford Academic"): sources_selected.append("Oxford Academic")
 
-        st.caption("Nguồn văn bản pháp luật")
+        st.markdown("<div class='source-category-title'>Nguồn văn bản pháp luật</div>", unsafe_allow_html=True)
         if st.checkbox("Luật Việt Nam", value=True): sources_selected.append("Luật Việt Nam")
         if st.checkbox("Thư Viện Pháp Luật", value=True): sources_selected.append("Thư Viện Pháp Luật")
 
-        st.caption("Các Website, CSDL chuyên ngành khác")
+        st.markdown("<div class='source-category-title'>Các Website, CSDL chuyên ngành khác</div>", unsafe_allow_html=True)
         if st.checkbox("Google Scholar", value=True): sources_selected.append("Google Scholar")
         
         st.markdown("</div><br>", unsafe_allow_html=True)
