@@ -20,6 +20,10 @@ if 'ai_data' not in st.session_state:
 if 'search_clicked' not in st.session_state:
     st.session_state.search_clicked = False
 
+# Khởi tạo trạng thái ngôn ngữ tra cứu mặc định
+if 'applied_search_mode' not in st.session_state:
+    st.session_state.applied_search_mode = "Tiếng Việt & Tiếng Anh (Quốc tế)"
+
 # Khởi tạo bộ nhớ tạm để tự động xóa trắng ô nhập liệu sau khi Enter
 if 'input_vn_widget' not in st.session_state: st.session_state.input_vn_widget = ""
 if 'input_en_widget' not in st.session_state: st.session_state.input_en_widget = ""
@@ -29,25 +33,9 @@ def on_add_vn():
     val = st.session_state.input_vn_widget
     if val:
         new_kws = [k.strip() for k in val.split(',') if k.strip()]
-        
-        # Gọi AI dịch ngầm các từ mới sang Tiếng Anh
-        en_kws = []
-        try:
-            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-            model = genai.GenerativeModel('gemini-3.5-flash')
-            trans_res = model.generate_content(f"Dịch các cụm từ pháp lý sau sang tiếng Anh, chỉ trả về các cụm từ cách nhau bằng dấu phẩy, không giải thích gì thêm: {val}")
-            en_kws = [k.strip() for k in trans_res.text.split(',') if k.strip()]
-        except: pass
-        
         if st.session_state.ai_data["tu_khoa_vn"] == ["Đang chờ AI phân tích..."]: st.session_state.ai_data["tu_khoa_vn"] = []
         for kw in new_kws:
             if kw not in st.session_state.ai_data["tu_khoa_vn"]: st.session_state.ai_data["tu_khoa_vn"].append(kw)
-            
-        if en_kws:
-            if st.session_state.ai_data["tu_khoa_en"] == ["Đang chờ AI phân tích..."]: st.session_state.ai_data["tu_khoa_en"] = []
-            for kw in en_kws:
-                if kw not in st.session_state.ai_data["tu_khoa_en"]: st.session_state.ai_data["tu_khoa_en"].append(kw)
-                
         st.session_state.input_vn_widget = ""
 
 # Hàm xử lý khi ấn Enter ở ô Tiếng Anh
@@ -60,29 +48,36 @@ def on_add_en():
             if kw not in st.session_state.ai_data["tu_khoa_en"]: st.session_state.ai_data["tu_khoa_en"].append(kw)
         st.session_state.input_en_widget = ""
 
-def call_gemini(topic):
+def call_gemini(topic, mode):
     try:
         genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
         model = genai.GenerativeModel('gemini-3.5-flash') 
         
-        # ĐÃ SỬA PROMPT: DIỆT TỪ ĐỒNG NGHĨA
+        # ĐIỀU HƯỚNG AI DỰA TRÊN TÙY CHỌN NGÔN NGỮ CỦA NGƯỜI DÙNG
+        mode_instruction = ""
+        if mode == "Chỉ Tiếng Việt":
+            mode_instruction = """
+5. PHẠM VI NGÔN NGỮ: Người dùng CHỈ yêu cầu tra cứu bằng Tiếng Việt.
+- "tu_khoa_en" BẮT BUỘC là mảng rỗng [].
+- "tu_khoa_dac_thu" BẮT BUỘC là mảng rỗng [].
+- "co_yeu_to_nuoc_ngoai" BẮT BUỘC là false.
+"""
+        else:
+            mode_instruction = """
+5. PHẠM VI NGÔN NGỮ: Dịch các từ khóa cốt lõi sang Tiếng Anh để đưa vào "tu_khoa_en". Nếu có yếu tố đặc thù quốc tế, hãy cập nhật "tu_khoa_dac_thu".
+"""
+
         prompt = f"""Bạn là một Chuyên gia Thư viện học tại Đại học Luật TP.HCM. 
 Nhiệm vụ: Phân tích đề tài sau để tạo bộ từ khóa tra cứu: "{topic}".
 KỶ LUẬT NGHIỆP VỤ:
 1. Từ khóa ĐẦU TIÊN phải là TỪ KHÓA CHÍNH mang tính cốt lõi của đề tài (VD: "giao dịch bảo đảm", "thanh toán điện tử").
-2. TUYỆT ĐỐI KHÔNG LIỆT KÊ TỪ ĐỒNG NGHĨA (VD: Đã có "giao dịch bảo đảm" thì cấm tạo ra "biện pháp bảo đảm", "cầm cố"). 
-3. Các từ khóa tiếp theo PHẢI LÀ TỪ KHÓA PHỤ, chỉ các khía cạnh/đối tượng để làm sáng tỏ (VD: "động sản", "ngân hàng thương mại", "bảo vệ khách hàng").
-4. CẤM tạo ra các từ khóa quá dài ghép nhiều vế.
-5. Nếu không có yếu tố quốc tế, "co_yeu_to_nuoc_ngoai": false, "tu_khoa_dac_thu": [].
+2. TUYỆT ĐỐI KHÔNG LIỆT KÊ TỪ ĐỒNG NGHĨA. 
+3. Các từ khóa tiếp theo PHẢI LÀ TỪ KHÓA PHỤ, chỉ các khía cạnh/đối tượng để làm sáng tỏ.
+4. CẤM tạo ra các từ khóa quá dài ghép nhiều vế.{mode_instruction}
 Trả về ĐÚNG JSON: {{"chuyen_nganh": ["..."], "tu_khoa_vn": ["..."], "tu_khoa_en": ["..."], "tu_khoa_dac_thu": ["..."], "co_yeu_to_nuoc_ngoai": true/false}} không giải thích."""
         
         response = model.generate_content(prompt)
-        text_result = response.text.strip()
-        
-        text_result = text_result.replace("`" + "`" + "`" + "json", "")
-        text_result = text_result.replace("`" + "`" + "`", "")
-        text_result = text_result.strip()
-            
+        text_result = response.text.replace("`" + "`" + "`" + "json", "").replace("`" + "`" + "`", "").strip()
         st.session_state.ai_data = json.loads(text_result)
         return True
     except Exception as e:
@@ -122,7 +117,6 @@ st.markdown("""
         border-left: 5px solid #2962ff;
     }
 
-    /* ĐÃ NÂNG CẤP TEXTAREA (Ô CHO PHÉP SỬA LỆNH) THÀNH MÀU ĐEN GIỐNG CONSOLE */
     textarea {
         background-color: #0f172a !important; 
         color: #bae6fd !important; 
@@ -130,6 +124,17 @@ st.markdown("""
         font-size: 13.5px !important; 
         border-left: 4px solid #38bdf8 !important;
         line-height: 1.5 !important;
+    }
+
+    .query-preview-box {
+        background-color: #0f172a; color: #bae6fd; padding: 12px; 
+        border-radius: 6px; font-family: 'Courier New', Courier, monospace; 
+        font-size: 13px; margin-top: -10px; margin-bottom: 15px;
+        border-left: 4px solid #38bdf8; overflow-x: auto; line-height: 1.5;
+    }
+    .query-label {
+        font-size: 12.5px; font-weight: 700; color: #fcd34d; 
+        margin-top: 6px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; display: block;
     }
 
     .step-container {display: flex; justify-content: space-between; background: white; padding: 15px 30px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #e0e0e0;}
@@ -161,19 +166,14 @@ with st.sidebar:
     st.markdown("📝 Tạo yêu cầu tra cứu")
     st.markdown("⏱️ Lịch sử yêu cầu")
     st.markdown("📁 Kho báo cáo")
-    st.markdown("ℹ️ Hướng dẫn sử dụng")
-    st.markdown("❓ Câu hỏi thường gặp")
-    st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("---")
     st.markdown("📞 (028) 3940 0989")
-    st.markdown("✉️ thuvien@hcmulaw.edu.vn")
 
 # HERO BANNER
 st.markdown("""
 <div class="hero-banner">
     <div class="hero-title-small">ULAW SMART REFERENCE SYSTEM</div>
     <div class="hero-title-large">TRA CỨU THÔNG TIN THEO YÊU CẦU</div>
-    <div class="hero-subtitle">Hệ thống giúp Thủ thư tra cứu, tổng hợp và xuất báo cáo tài liệu một cách tự động, chính xác và nhanh chóng.</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -200,77 +200,80 @@ with col1:
         with c1: year_start = st.number_input("Từ", value=2020, step=1, label_visibility="collapsed")
         with c2: year_end = st.number_input("Đến", value=2026, step=1, label_visibility="collapsed")
         
-        st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
         
+        # TÙY CHỌN NGÔN NGỮ TRA CỨU
+        search_mode = st.radio("🌐 Phạm vi ngôn ngữ tra cứu:", ["Chỉ Tiếng Việt", "Tiếng Việt & Tiếng Anh (Quốc tế)"], horizontal=True)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("<div class='btn-blue'>", unsafe_allow_html=True)
         if st.button("🚀 Phân tích bằng AI", use_container_width=True):
-            if topic.strip() == "":
-                st.error("Vui lòng nhập Tên đề tài!")
+            if topic.strip() == "": st.error("Vui lòng nhập Tên đề tài!")
             else:
                 st.session_state.search_clicked = False 
+                st.session_state.applied_search_mode = search_mode # Ghi nhớ tùy chọn
                 with st.spinner("🤖 AI đang phân tích dữ liệu..."):
-                    if call_gemini(topic):
-                        st.success("✅ Phân tích thành công!")
+                    if call_gemini(topic, search_mode): st.success("✅ Phân tích thành công!")
         st.markdown("</div>", unsafe_allow_html=True)
 
-# ==================== CỘT 2: KHỐI TỪ KHÓA MỚI ====================
+# ==================== CỘT 2: KHỐI TỪ KHÓA (ẨN/HIỆN THÔNG MINH) ====================
 with col2:
     with st.container(border=True):
         st.markdown("<div class='card-header'>💡 2. AI ĐỀ XUẤT TỪ KHÓA</div>", unsafe_allow_html=True)
-        
         ai = st.session_state.ai_data
         st.multiselect("Chuyên ngành luật", ai.get("chuyen_nganh", []), default=ai.get("chuyen_nganh", []))
         
-        # --- TIẾNG VIỆT ---
+        # --- KHỐI TIẾNG VIỆT (Luôn hiển thị) ---
         sel_vn = st.multiselect("Từ khóa tiếng Việt", ai.get("tu_khoa_vn", []), default=ai.get("tu_khoa_vn", []))
-        st.text_input("➕ Thêm từ khác, sau đó nhấn Enter để thêm từ:", key="input_vn_widget", on_change=on_add_vn, placeholder="VD: bảo mật thông tin...")
+        st.text_input("➕ Thêm từ khác, sau đó nhấn Enter để thêm từ:", key="input_vn_widget", on_change=on_add_vn, placeholder="VD: giao dịch bảo đảm...")
 
         if sel_vn and sel_vn[0] != "Đang chờ AI phân tích...":
-            # Xây dựng chuỗi văn bản cho ô TextBox chỉnh sửa
             vn_text = "🔸 TÌM ĐƠN LẺ:\n"
             for kw in sel_vn: vn_text += f'"{kw}"\n'
             
             if len(sel_vn) > 1:
                 vn_text += "\n🔸 TÌM KẾT HỢP (Từ khóa chính + Từ khóa phụ):\n"
                 core_kw = sel_vn[0]
-                for sec_kw in sel_vn[1:]:
-                    vn_text += f'"{core_kw}" AND "{sec_kw}"\n'
+                for sec_kw in sel_vn[1:]: vn_text += f'"{core_kw}" AND "{sec_kw}"\n'
                     
             st.caption("✍️ Tùy chỉnh chuỗi lệnh tra cứu (có thể gõ thêm/xóa bớt):")
             st.text_area("Lệnh TV", value=vn_text.strip(), height=160, key="ta_vn", label_visibility="collapsed")
         
-        # --- TIẾNG ANH ---
-        sel_en = st.multiselect("Từ khóa tiếng Anh", ai.get("tu_khoa_en", []), default=ai.get("tu_khoa_en", []))
-        st.text_input("➕ Thêm từ khác, sau đó nhấn Enter để thêm từ (Tiếng Anh):", key="input_en_widget", on_change=on_add_en, placeholder="VD: data security...")
-
-        if sel_en and sel_en[0] != "Đang chờ AI phân tích...":
-            en_text = "🔸 TÌM ĐƠN LẺ:\n"
-            for kw in sel_en: en_text += f'"{kw}"\n'
+        # --- KHỐI TIẾNG ANH & QUỐC TẾ (Chỉ hiển thị khi người dùng chọn) ---
+        if st.session_state.applied_search_mode == "Tiếng Việt & Tiếng Anh (Quốc tế)":
+            st.markdown("<hr style='margin:15px 0; border-top: 1px dashed #cbd5e1;'>", unsafe_allow_html=True)
             
-            if len(sel_en) > 1:
-                en_text += "\n🔸 TÌM KẾT HỢP (Từ khóa chính + Từ khóa phụ):\n"
-                core_kw_en = sel_en[0]
-                for sec_kw_en in sel_en[1:]:
-                    en_text += f'"{core_kw_en}" AND "{sec_kw_en}"\n'
-                    
-            st.caption("✍️ Tùy chỉnh chuỗi lệnh tra cứu Tiếng Anh:")
-            st.text_area("Lệnh EN", value=en_text.strip(), height=160, key="ta_en", label_visibility="collapsed")
-        
-        # --- ĐẶC THÙ QUỐC TẾ ---
-        sel_dac_thu = []
-        if ai.get("co_yeu_to_nuoc_ngoai", False) and ai.get("tu_khoa_dac_thu", []) and ai["tu_khoa_dac_thu"][0] != "Đang chờ AI phân tích...":
-            sel_dac_thu = st.multiselect("Từ khóa đặc thù (Quốc tế)", ai.get("tu_khoa_dac_thu", []), default=ai.get("tu_khoa_dac_thu", []))
-            if sel_dac_thu:
-                dt_text = "🔸 TÌM ĐƠN LẺ ĐẶC THÙ:\n"
-                for kw in sel_dac_thu: dt_text += f'"{kw}"\n'
-                
-                if sel_vn and sel_vn[0] != "Đang chờ AI phân tích...":
-                    dt_text += "\n🔸 ĐỐI CHIẾU BỐI CẢNH QUỐC TẾ:\n"
-                    dt_text += f'"{sel_vn[0]}" AND "{sel_dac_thu[0]}"'
-                    
-                st.caption("✍️ Tùy chỉnh chuỗi lệnh tra cứu đặc thù:")
-                st.text_area("Lệnh Đặc thù", value=dt_text.strip(), height=130, key="ta_dt", label_visibility="collapsed")
+            sel_en = st.multiselect("Từ khóa tiếng Anh", ai.get("tu_khoa_en", []), default=ai.get("tu_khoa_en", []))
+            st.text_input("➕ Thêm từ khác, sau đó nhấn Enter để thêm từ (Tiếng Anh):", key="input_en_widget", on_change=on_add_en, placeholder="VD: secured transaction...")
 
+            if sel_en and sel_en[0] != "Đang chờ AI phân tích...":
+                en_text = "🔸 TÌM ĐƠN LẺ:\n"
+                for kw in sel_en: en_text += f'"{kw}"\n'
+                
+                if len(sel_en) > 1:
+                    en_text += "\n🔸 TÌM KẾT HỢP (Từ khóa chính + Từ khóa phụ):\n"
+                    core_kw_en = sel_en[0]
+                    for sec_kw_en in sel_en[1:]: en_text += f'"{core_kw_en}" AND "{sec_kw_en}"\n'
+                        
+                st.caption("✍️ Tùy chỉnh chuỗi lệnh tra cứu Tiếng Anh:")
+                st.text_area("Lệnh EN", value=en_text.strip(), height=160, key="ta_en", label_visibility="collapsed")
+            
+            # Khối Đặc thù Quốc tế
+            sel_dac_thu = []
+            if ai.get("co_yeu_to_nuoc_ngoai", False) and ai.get("tu_khoa_dac_thu", []) and ai["tu_khoa_dac_thu"][0] != "Đang chờ AI phân tích...":
+                sel_dac_thu = st.multiselect("Từ khóa đặc thù (Quốc tế)", ai.get("tu_khoa_dac_thu", []), default=ai.get("tu_khoa_dac_thu", []))
+                if sel_dac_thu:
+                    dt_text = "🔸 TÌM ĐƠN LẺ ĐẶC THÙ:\n"
+                    for kw in sel_dac_thu: dt_text += f'"{kw}"\n'
+                    
+                    if sel_vn and sel_vn[0] != "Đang chờ AI phân tích...":
+                        dt_text += "\n🔸 ĐỐI CHIẾU BỐI CẢNH QUỐC TẾ:\n"
+                        dt_text += f'"{sel_vn[0]}" AND "{sel_dac_thu[0]}"'
+                        
+                    st.caption("✍️ Tùy chỉnh chuỗi lệnh tra cứu đặc thù:")
+                    st.text_area("Lệnh Đặc thù", value=dt_text.strip(), height=130, key="ta_dt", label_visibility="collapsed")
+
+        # Nút Khôi phục / Xác nhận
         st.markdown("<br>", unsafe_allow_html=True)
         cb1, cb2 = st.columns(2)
         with cb1:
@@ -295,27 +298,19 @@ with col3:
         src_ulaw = st.checkbox("Thư viện Trường ĐH Luật TP.HCM", value=True)
         src_nat = st.checkbox("Thư viện Quốc gia Việt Nam", value=True)
         src_khth = st.checkbox("Thư viện Khoa học Tổng hợp TP.HCM", value=True)
-        
         st.caption("Trường Đại học liên kết")
         src_uel = st.checkbox("Đại học Kinh tế - Luật (UEL)", value=True)
         src_lhn = st.checkbox("Đại học Luật Hà Nội", value=True)
         src_qghn = st.checkbox("Đại học Quốc gia Hà Nội", value=True)
         src_lhue = st.checkbox("Đại học Luật – Đại học Huế", value=True)
-        src_ctho = st.checkbox("Đại học Cần Thơ", value=True)
-        src_ntg = st.checkbox("Đại học Ngoại thương", value=True)
-        
         st.caption("Quốc tế")
         src_hein = st.checkbox("HeinOnline", value=True)
         src_west = st.checkbox("Westlaw", value=True)
-        
         st.caption("Pháp quy & Mở rộng")
         src_lvn = st.checkbox("Luật Việt Nam", value=True)
         src_tvpl = st.checkbox("Thư Viện Pháp Luật", value=True)
-        src_gg = st.checkbox("Google (Website & CSDL chuyên ngành)", value=True)
         
-        st.markdown("</div>", unsafe_allow_html=True)
-        st.markdown("<br>", unsafe_allow_html=True)
-        
+        st.markdown("</div><br>", unsafe_allow_html=True)
         st.markdown("<div class='btn-green'>", unsafe_allow_html=True)
         if st.button("🔍 Bắt đầu Tra cứu", use_container_width=True):
             st.session_state.search_clicked = True
@@ -334,7 +329,6 @@ with col4:
         else:
             progress_bar = st.progress(0)
             status_text = st.empty()
-            
             sources_to_scan = ["Thư viện ULAW", "Thư viện Quốc gia", "ĐH Luật Hà Nội", "HeinOnline", "Thư Viện Pháp Luật"]
             for percent_complete in range(100):
                 time.sleep(0.01)
@@ -348,12 +342,11 @@ with col4:
             
             data_sample = {
                 "Tiêu đề tài liệu": [
-                    "Pháp luật về giải quyết tranh chấp đất đai tại Việt Nam", 
-                    "Thực tiễn giải quyết tranh chấp quyền sử dụng đất tại Tòa án", 
-                    "Land Disputes and Resolution Mechanisms: A Comparative Study", 
-                    "Bình luận án về tranh chấp hợp đồng chuyển nhượng đất đai"
+                    "Pháp luật về giải quyết tranh chấp tại Việt Nam", 
+                    "Thực tiễn giải quyết quyền sử dụng đất tại Tòa án", 
+                    "Disputes and Resolution Mechanisms: A Comparative Study", 
+                    "Bình luận án về tranh chấp hợp đồng"
                 ],
-                "Nguồn": ["ULAW", "TVPL", "HeinOnline", "ĐH Luật HN"],
                 "Năm": [2023, 2024, 2022, 2025]
             }
             df_result = pd.DataFrame(data_sample)
@@ -365,11 +358,3 @@ with col4:
                 st.snow()
                 st.success("🎉 Đã xuất file báo cáo thành công!")
             st.markdown("</div>", unsafe_allow_html=True)
-
-st.markdown("---")
-f1, f2, f3, f4, f5 = st.columns(5)
-with f1: st.markdown("🚀 **Tự động hóa 80-90%**<br><small>Tiết kiệm thời gian tra cứu</small>", unsafe_allow_html=True)
-with f2: st.markdown("🧠 **AI thông minh**<br><small>Đề xuất từ khóa chính xác</small>", unsafe_allow_html=True)
-with f3: st.markdown("🛡️ **Kết quả chính xác**<br><small>Lọc trùng lặp, ưu tiên nguồn</small>", unsafe_allow_html=True)
-with f4: st.markdown("📄 **Báo cáo chuẩn ULAW**<br><small>Định dạng chính xác, thống kê</small>", unsafe_allow_html=True)
-with f5: st.markdown("🕒 **Lưu trữ & Tái sử dụng**<br><small>Lịch sử tra cứu, clone dễ dàng</small>", unsafe_allow_html=True)
