@@ -3,7 +3,6 @@ import pandas as pd
 import google.generativeai as genai
 import json
 import time
-import itertools
 
 # 1. CẤU HÌNH TRANG WEB
 st.set_page_config(page_title="ULAW Smart Reference System", layout="wide", initial_sidebar_state="expanded")
@@ -24,7 +23,7 @@ if 'search_clicked' not in st.session_state:
 if 'input_vn_widget' not in st.session_state: st.session_state.input_vn_widget = ""
 if 'input_en_widget' not in st.session_state: st.session_state.input_en_widget = ""
 
-# Hàm xử lý khi ấn Enter ở ô Tiếng Việt (Thêm từ & Tự động dịch sang Tiếng Anh)
+# Hàm xử lý khi ấn Enter ở ô Tiếng Việt
 def on_add_vn():
     val = st.session_state.input_vn_widget
     if val:
@@ -48,7 +47,6 @@ def on_add_vn():
             for kw in en_kws:
                 if kw not in st.session_state.ai_data["tu_khoa_en"]: st.session_state.ai_data["tu_khoa_en"].append(kw)
                 
-        # Xóa trắng ô nhập liệu để sẵn sàng cho từ tiếp theo
         st.session_state.input_vn_widget = ""
 
 # Hàm xử lý khi ấn Enter ở ô Tiếng Anh
@@ -66,19 +64,20 @@ def call_gemini(topic):
         genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
         model = genai.GenerativeModel('gemini-3.5-flash') 
         
-        prompt = f"""Bạn là một Chuyên gia Thư viện học và Luật sư cấp cao tại Đại học Luật TP.HCM. 
-Nhiệm vụ của bạn là phân tích đề tài nghiên cứu sau để tạo ra bộ từ khóa tra cứu chuẩn xác: "{topic}".
-KỶ LUẬT NGHIỆP VỤ THƯ VIỆN BẮT BUỘC:
-1. Chỉ bóc tách từ 2 đến 3 từ khóa là THỰC THỂ PHÁP LÝ TRỌNG TÂM của đề tài. (Ví dụ với đề tài thanh toán điện tử, từ khóa bắt buộc phải có là "thanh toán điện tử", "hoạt động thanh toán điện tử").
-2. TUYỆT ĐỐI KHÔNG tách các danh từ chung chung như "khách hàng", "ngân hàng", "nhà nước" đứng độc lập. Phải ghép thành cụm phức hợp có nghĩa (VD: "bảo vệ khách hàng", "thanh toán qua ngân hàng").
-3. TUYỆT ĐỐI LOẠI BỎ các từ rườm rà: thực tiễn, đường lối, giải quyết, quy định, pháp luật, bất cập, hoàn thiện, một số vấn đề.
-4. Đề tài nghiên cứu trong nước, không có từ khóa quốc tế thì "co_yeu_to_nuoc_ngoai" BẮT BUỘC ghi false và "tu_khoa_dac_thu" là mảng rỗng [].
-Trả về ĐÚNG định dạng JSON: {{"chuyen_nganh": ["..."], "tu_khoa_vn": ["..."], "tu_khoa_en": ["..."], "tu_khoa_dac_thu": ["..."], "co_yeu_to_nuoc_ngoai": true/false}} không giải thích thêm."""
+        # ĐÃ SỬA PROMPT: Ép AI đưa Từ khóa chính xác nhất lên đầu, chặt nhỏ các từ ghép dài
+        prompt = f"""Bạn là một Chuyên gia Thư viện học tại Đại học Luật TP.HCM. 
+Nhiệm vụ: Phân tích đề tài sau để tạo bộ từ khóa tra cứu: "{topic}".
+KỶ LUẬT BẮT BUỘC MỚI:
+1. Mảng "tu_khoa_vn" và "tu_khoa_en":
+   - Phần tử ĐẦU TIÊN phải là 1 TỪ KHÓA CHÍNH xác nhất, mang tính cốt lõi của đề tài (VD: "giao dịch bảo đảm", "thanh toán điện tử").
+   - Các phần tử tiếp theo là TỪ KHÓA PHỤ dùng để làm sáng tỏ thêm (VD: "động sản", "ngân hàng thương mại", "khách hàng").
+2. CẤM tạo ra các từ khóa quá dài ghép nhiều vế (Sai: "bảo đảm bằng động sản tại ngân hàng", Đúng: tách thành "bảo đảm bằng động sản" và "ngân hàng").
+3. Nếu đề tài không có yếu tố quốc tế, "co_yeu_to_nuoc_ngoai": false, "tu_khoa_dac_thu": [].
+Trả về ĐÚNG JSON: {{"chuyen_nganh": ["..."], "tu_khoa_vn": ["..."], "tu_khoa_en": ["..."], "tu_khoa_dac_thu": ["..."], "co_yeu_to_nuoc_ngoai": true/false}} không giải thích."""
         
         response = model.generate_content(prompt)
         text_result = response.text.strip()
         
-        # ĐÃ SỬA LỖI: Dùng mẹo cộng chuỗi để tránh bị khung chat cắt ngang mã nguồn
         text_result = text_result.replace("`" + "`" + "`" + "json", "")
         text_result = text_result.replace("`" + "`" + "`", "")
         text_result = text_result.strip()
@@ -92,7 +91,7 @@ Trả về ĐÚNG định dạng JSON: {{"chuyen_nganh": ["..."], "tu_khoa_vn": 
 # 2. TÙY CHỈNH CSS CHUYÊN SÂU
 st.markdown("""
 <style>
-    @import url('[https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap](https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap)');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     html, body, [class*="css"] {font-family: 'Inter', sans-serif;}
     .stApp {background-color: #f4f6f9;}
     header {visibility: hidden;}
@@ -101,7 +100,7 @@ st.markdown("""
     [data-testid="stSidebar"] * {color: white !important;}
     
     .hero-banner {
-        background-image: linear-gradient(rgba(26, 35, 126, 0.85), rgba(26, 35, 126, 0.85)), url('[https://images.unsplash.com/photo-1507842217343-583bb7270b66?q=80&w=2000&auto=format&fit=crop](https://images.unsplash.com/photo-1507842217343-583bb7270b66?q=80&w=2000&auto=format&fit=crop)');
+        background-image: linear-gradient(rgba(26, 35, 126, 0.85), rgba(26, 35, 126, 0.85)), url('https://images.unsplash.com/photo-1507842217343-583bb7270b66?q=80&w=2000&auto=format&fit=crop');
         background-size: cover; background-position: center;
         padding: 40px 30px; border-radius: 10px; margin-top: -50px; margin-bottom: 20px;
         text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
@@ -129,10 +128,8 @@ st.markdown("""
         border-left: 4px solid #38bdf8; overflow-x: auto; line-height: 1.5;
     }
     .query-label {
-        font-size: 12.5px; font-weight: 700; 
-        color: #fcd34d; 
-        margin-top: 6px; margin-bottom: 4px; 
-        text-transform: uppercase; letter-spacing: 0.5px; display: block;
+        font-size: 12.5px; font-weight: 700; color: #fcd34d; 
+        margin-top: 6px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; display: block;
     }
 
     .step-container {display: flex; justify-content: space-between; background: white; padding: 15px 30px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #e0e0e0;}
@@ -142,11 +139,8 @@ st.markdown("""
     .step-active {color: #3f51b5;}
     
     .btn-blue button {background-color: #2962ff !important; color: white !important; width: 100%; border-radius: 8px !important; font-weight: 700 !important; border: none; padding: 10px !important;}
-    .btn-blue button:hover {background-color: #1c44b2 !important;}
     .btn-green button {background-color: #00897b !important; color: white !important; width: 100%; border-radius: 8px !important; font-weight: 700 !important; border: none; padding: 10px !important;}
-    .btn-green button:hover {background-color: #00695c !important;}
     .btn-orange button {background-color: #f57c00 !important; color: white !important; width: 100%; border-radius: 8px !important; font-weight: 700 !important; border: none; padding: 10px !important;}
-    .btn-orange button:hover {background-color: #ef6c00 !important;}
     .btn-outline button {background-color: white !important; color: #3f51b5 !important; border: 1.5px solid #3f51b5 !important; width: 100%; border-radius: 8px !important; font-weight: 600 !important;}
     
     div[data-testid="stVerticalBlock"] > div[style*="flex-direction: column;"] > div[data-testid="stVerticalBlock"] {background-color: white; padding: 20px; border-radius: 10px; border: 1px solid #e0e0e0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);}
@@ -219,7 +213,7 @@ with col1:
                         st.success("✅ Phân tích thành công!")
         st.markdown("</div>", unsafe_allow_html=True)
 
-# ==================== CỘT 2: KHỐI TỪ KHÓA ĐÃ ĐƯỢC TINH CHỈNH BIẾN ĐỔI CHUỖI TÌM KIẾM CẶP ====================
+# ==================== CỘT 2: LOGIC TỪ KHÓA CHÍNH - PHỤ ====================
 with col2:
     with st.container(border=True):
         st.markdown("<div class='card-header'>💡 2. AI ĐỀ XUẤT TỪ KHÓA</div>", unsafe_allow_html=True)
@@ -228,38 +222,41 @@ with col2:
         st.multiselect("Chuyên ngành luật", ai.get("chuyen_nganh", []), default=ai.get("chuyen_nganh", []))
         
         # --- TIẾNG VIỆT ---
+        st.markdown("<small style='color:#64748b;'><i>* Ghi chú: Có thể bấm dấu [x] để xóa từ khóa không chính xác. Từ khóa đầu tiên sẽ làm Từ khóa chính.</i></small>", unsafe_allow_html=True)
         sel_vn = st.multiselect("Từ khóa tiếng Việt", ai.get("tu_khoa_vn", []), default=ai.get("tu_khoa_vn", []))
-        st.text_input("➕ Thêm từ khác (các từ cách nhau bằng dấu phẩy):", key="input_vn_widget", on_change=on_add_vn, placeholder="Ấn Enter hệ thống tự dịch...")
+        st.text_input("➕ Thêm từ khác, sau đó nhấn Enter để thêm từ:", key="input_vn_widget", on_change=on_add_vn, placeholder="VD: giao dịch bảo đảm...")
 
         if sel_vn and sel_vn[0] != "Đang chờ AI phân tích...":
             vn_queries = ["<span class='query-label'>🔸 Tìm đơn lẻ:</span>"]
             for kw in sel_vn: vn_queries.append(f'"{kw}"')
             
+            # ĐÃ ĐỔI THUẬT TOÁN: Lấy từ khóa ĐẦU TIÊN làm gốc, ghép với các từ khóa phụ
             if len(sel_vn) > 1:
-                vn_queries.append("<span class='query-label'>🔸 Tìm kết hợp cặp đôi (Thu hẹp):</span>")
-                pairs = list(itertools.combinations(sel_vn, 2))
-                for p in pairs[:3]:
-                    vn_queries.append(f'"{p[0]}" AND "{p[1]}"')
+                vn_queries.append("<span class='query-label'>🔸 Tìm kết hợp (Từ khóa chính + Từ khóa phụ):</span>")
+                core_kw = sel_vn[0]
+                for sec_kw in sel_vn[1:]:
+                    vn_queries.append(f'"{core_kw}" AND "{sec_kw}"')
                     
             st.markdown(f"<div class='query-preview-box'>{'<br>'.join(vn_queries)}</div>", unsafe_allow_html=True)
         
         # --- TIẾNG ANH ---
         sel_en = st.multiselect("Từ khóa tiếng Anh", ai.get("tu_khoa_en", []), default=ai.get("tu_khoa_en", []))
-        st.text_input("➕ Thêm từ Tiếng Anh (các từ cách nhau bằng dấu phẩy):", key="input_en_widget", on_change=on_add_en, placeholder="Ấn Enter để nạp thuật ngữ...")
+        st.text_input("➕ Thêm từ khác, sau đó nhấn Enter để thêm từ:", key="input_en_widget", on_change=on_add_en, placeholder="VD: secured transaction...")
 
         if sel_en and sel_en[0] != "Đang chờ AI phân tích...":
             en_queries = ["<span class='query-label'>🔸 Tìm đơn lẻ:</span>"]
             for kw in sel_en: en_queries.append(f'"{kw}"')
             
+            # Tương tự Tiếng Việt: Lấy từ tiếng Anh đầu tiên làm gốc ghép với các từ phụ
             if len(sel_en) > 1:
-                en_queries.append("<span class='query-label'>🔸 Tìm kết hợp cặp đôi (Thu hẹp):</span>")
-                pairs_en = list(itertools.combinations(sel_en, 2))
-                for p in pairs_en[:3]:
-                    en_queries.append(f'"{p[0]}" AND "{p[1]}"')
+                en_queries.append("<span class='query-label'>🔸 Tìm kết hợp (Từ khóa chính + Từ khóa phụ):</span>")
+                core_kw_en = sel_en[0]
+                for sec_kw_en in sel_en[1:]:
+                    en_queries.append(f'"{core_kw_en}" AND "{sec_kw_en}"')
                     
             st.markdown(f"<div class='query-preview-box'>{'<br>'.join(en_queries)}</div>", unsafe_allow_html=True)
         
-        # --- ĐẶC THÙ QUỐC TẾ (CHỈ HIỆN KHI CÓ YẾU TỐ NƯỚC NGOÀI) ---
+        # --- ĐẶC THÙ QUỐC TẾ ---
         sel_dac_thu = []
         if ai.get("co_yeu_to_nuoc_ngoai", False) and ai.get("tu_khoa_dac_thu", []) and ai["tu_khoa_dac_thu"][0] != "Đang chờ AI phân tích...":
             sel_dac_thu = st.multiselect("Từ khóa đặc thù (Quốc tế)", ai.get("tu_khoa_dac_thu", []), default=ai.get("tu_khoa_dac_thu", []))
@@ -268,6 +265,7 @@ with col2:
                 for kw in sel_dac_thu: dt_queries.append(f'"{kw}"')
                 st.markdown(f"<div class='query-preview-box'>{'<br>'.join(dt_queries)}</div>", unsafe_allow_html=True)
 
+        # Ghép từ khóa chính (Việt) với Đặc thù quốc tế
         if (sel_vn and sel_vn[0] != "Đang chờ AI phân tích...") and sel_dac_thu:
             st.markdown("<hr style='margin:10px 0; border-top: 1px dashed #cbd5e1;'>", unsafe_allow_html=True)
             combined = [f'"{sel_vn[0]}" AND "{sel_dac_thu[0]}"']
@@ -278,13 +276,7 @@ with col2:
         with cb1:
             st.markdown("<div class='btn-outline'>", unsafe_allow_html=True)
             if st.button("🔄 Khôi phục", use_container_width=True):
-                st.session_state.ai_data = {
-                    "chuyen_nganh": ["Đang chờ AI phân tích..."], 
-                    "tu_khoa_vn": ["Đang chờ AI phân tích..."], 
-                    "tu_khoa_en": ["Đang chờ AI phân tích..."], 
-                    "tu_khoa_dac_thu": ["Đang chờ AI phân tích..."], 
-                    "co_yeu_to_nuoc_ngoai": False
-                }
+                st.session_state.ai_data = {"chuyen_nganh": ["Đang chờ AI phân tích..."], "tu_khoa_vn": ["Đang chờ AI phân tích..."], "tu_khoa_en": ["Đang chờ AI phân tích..."], "tu_khoa_dac_thu": ["Đang chờ AI phân tích..."], "co_yeu_to_nuoc_ngoai": False}
                 st.session_state.search_clicked = False
                 st.rerun()
             st.markdown("</div>", unsafe_allow_html=True)
@@ -293,7 +285,7 @@ with col2:
             st.button("✓ Xác nhận", use_container_width=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
-# ==================== CỘT 3 & CỘT 4 (GIỮ NGUYÊN) ====================
+# ==================== CỘT 3 & CỘT 4 ====================
 with col3:
     with st.container(border=True):
         st.markdown("<div class='card-header'>📚 3. CHỌN NGUỒN TRA CỨU</div>", unsafe_allow_html=True)
