@@ -195,21 +195,20 @@ with col1:
         topic = st.text_input("Tên đề tài nghiên cứu *", placeholder="Nhập tên đề tài...")
         author = st.text_input("Tên người/nhóm yêu cầu *", placeholder="Nhập tên người yêu cầu...")
         
-        # THAY ĐỔI: KHOẢNG THỜI GIAN XUẤT BẢN MẶC ĐỊNH LÀ TÌM TẤT CẢ CÁC NĂM
-        st.markdown("<small style='color:#5f6368; font-weight:600;'>Khoảng thời gian xuất bản</small>", unsafe_allow_html=True)
-        apply_year_filter = st.checkbox("Giới hạn mốc thời gian", value=False)
+        st.markdown("<hr style='margin:15px 0;'>", unsafe_allow_html=True)
         
-        if apply_year_filter:
+        # TÙY CHỌN THỜI GIAN ĐỒNG BỘ VỚI TÙY CHỌN NGÔN NGỮ
+        time_mode = st.radio("📅 Khoảng thời gian xuất bản:", ["Tất cả các năm", "Giới hạn thời gian"], horizontal=True)
+        if time_mode == "Giới hạn thời gian":
             c1, c2 = st.columns(2)
             with c1: year_start = st.number_input("Từ năm", value=2020, step=1)
             with c2: year_end = st.number_input("Đến năm", value=2026, step=1)
         else:
             year_start, year_end = None, None
-            st.caption("🌐 Thiết lập: Tra cứu tất cả các năm")
-        
+            
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # THAY ĐỔI: GIAO DIỆN NGÔN NGỮ TRA CỨU MỚI TINH GỌN
+        # TÙY CHỌN NGÔN NGỮ TRA CỨU
         search_mode = st.radio("🌐 Ngôn ngữ tra cứu:", ["Tiếng Việt", "Tiếng Việt & Tiếng Anh"], horizontal=True)
         
         st.markdown("<br>", unsafe_allow_html=True)
@@ -223,14 +222,14 @@ with col1:
                     if call_gemini(topic, search_mode): st.success("✅ Phân tích thành công!")
         st.markdown("</div>", unsafe_allow_html=True)
 
-# ==================== CỘT 2: KHỐI TỪ KHÓA ====================
+# ==================== CỘT 2: KHỐI TỪ KHÓA (ẨN/HIỆN THÔNG MINH) ====================
 with col2:
     with st.container(border=True):
         st.markdown("<div class='card-header'>💡 2. AI ĐỀ XUẤT TỪ KHÓA</div>", unsafe_allow_html=True)
         ai = st.session_state.ai_data
         st.multiselect("Chuyên ngành luật", ai.get("chuyen_nganh", []), default=ai.get("chuyen_nganh", []))
         
-        # --- TIẾNG VIỆT ---
+        # --- KHỐI TIẾNG VIỆT (Luôn hiển thị) ---
         sel_vn = st.multiselect("Từ khóa tiếng Việt", ai.get("tu_khoa_vn", []), default=ai.get("tu_khoa_vn", []))
         st.text_input("➕ Thêm từ khác, sau đó nhấn Enter để thêm từ:", key="input_vn_widget", on_change=on_add_vn, placeholder="VD: giao dịch bảo đảm...")
 
@@ -246,7 +245,7 @@ with col2:
             st.caption("✍ shrink_box Lệnh tra cứu Tiếng Việt (Có thể sửa trực tiếp):")
             st.text_area("Lệnh TV", value=vn_text.strip(), height=160, key="ta_vn", label_visibility="collapsed")
         
-        # --- TIẾNG ANH & QUỐC TẾ (Ẩn hiện thông minh theo cấu hình radio) ---
+        # --- KHỐI TIẾNG ANH & QUỐC TẾ (Chỉ hiển thị khi người dùng chọn) ---
         if st.session_state.applied_search_mode == "Tiếng Việt & Tiếng Anh":
             st.markdown("<hr style='margin:15px 0; border-top: 1px dashed #cbd5e1;'>", unsafe_allow_html=True)
             
