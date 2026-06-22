@@ -197,7 +197,6 @@ with col1:
         
         st.markdown("<hr style='margin:15px 0;'>", unsafe_allow_html=True)
         
-        # TÙY CHỌN THỜI GIAN ĐỒNG BỘ VỚI TÙY CHỌN NGÔN NGỮ
         time_mode = st.radio("📅 Khoảng thời gian xuất bản:", ["Tất cả các năm", "Giới hạn thời gian"], horizontal=True)
         if time_mode == "Giới hạn thời gian":
             c1, c2 = st.columns(2)
@@ -208,7 +207,6 @@ with col1:
             
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # TÙY CHỌN NGÔN NGỮ TRA CỨU
         search_mode = st.radio("🌐 Ngôn ngữ tra cứu:", ["Tiếng Việt", "Tiếng Việt & Tiếng Anh"], horizontal=True)
         
         st.markdown("<br>", unsafe_allow_html=True)
@@ -222,14 +220,14 @@ with col1:
                     if call_gemini(topic, search_mode): st.success("✅ Phân tích thành công!")
         st.markdown("</div>", unsafe_allow_html=True)
 
-# ==================== CỘT 2: KHỐI TỪ KHÓA (ẨN/HIỆN THÔNG MINH) ====================
+# ==================== CỘT 2: KHỐI TỪ KHÓA ====================
 with col2:
     with st.container(border=True):
         st.markdown("<div class='card-header'>💡 2. AI ĐỀ XUẤT TỪ KHÓA</div>", unsafe_allow_html=True)
         ai = st.session_state.ai_data
         st.multiselect("Chuyên ngành luật", ai.get("chuyen_nganh", []), default=ai.get("chuyen_nganh", []))
         
-        # --- KHỐI TIẾNG VIỆT (Luôn hiển thị) ---
+        # --- KHỐI TIẾNG VIỆT ---
         sel_vn = st.multiselect("Từ khóa tiếng Việt", ai.get("tu_khoa_vn", []), default=ai.get("tu_khoa_vn", []))
         st.text_input("➕ Thêm từ khác, sau đó nhấn Enter để thêm từ:", key="input_vn_widget", on_change=on_add_vn, placeholder="VD: giao dịch bảo đảm...")
 
@@ -245,7 +243,7 @@ with col2:
             st.caption("✍ shrink_box Lệnh tra cứu Tiếng Việt (Có thể sửa trực tiếp):")
             st.text_area("Lệnh TV", value=vn_text.strip(), height=160, key="ta_vn", label_visibility="collapsed")
         
-        # --- KHỐI TIẾNG ANH & QUỐC TẾ (Chỉ hiển thị khi người dùng chọn) ---
+        # --- KHỐI TIẾNG ANH & QUỐC TẾ ---
         if st.session_state.applied_search_mode == "Tiếng Việt & Tiếng Anh":
             st.markdown("<hr style='margin:15px 0; border-top: 1px dashed #cbd5e1;'>", unsafe_allow_html=True)
             
@@ -299,21 +297,31 @@ with col3:
         st.markdown("<div class='card-header'>📚 3. CHỌN NGUỒN TRA CỨU</div>", unsafe_allow_html=True)
         st.markdown("<div class='scrollable-source'>", unsafe_allow_html=True)
         
-        st.caption("Nội bộ & Thư viện Quốc gia")
-        src_ulaw = st.checkbox("Thư viện Trường ĐH Luật TP.HCM", value=True)
+        st.caption("Thư viện đại học")
+        src_ulaw = st.checkbox("Thư viện Trường Đại học Luật TP.HCM", value=True)
+        src_uel = st.checkbox("Thư viện Trường Đại học Kinh tế - Luật", value=True)
+        src_hl = st.checkbox("Thư viện Trường Đại học Luật Hà Nội", value=True)
+        src_hue = st.checkbox("Thư viện Trường Đại học Luật - Đại học Huế", value=True)
+        src_vnu = st.checkbox("Thư viện Đại học Quốc gia Hà Nội", value=True)
+        src_ftu = st.checkbox("Thư viện Trường Đại học Ngoại thương", value=True)
+        src_ctu = st.checkbox("Thư viện Đại học Cần Thơ", value=True)
+
+        st.caption("Thư viện quốc gia và công cộng")
         src_nat = st.checkbox("Thư viện Quốc gia Việt Nam", value=True)
-        src_khth = st.checkbox("Thư viện Khoa học Tổng hợp TP.HCM", value=True)
-        st.caption("Trường Đại học liên kết")
-        src_uel = st.checkbox("Đại học Kinh tế - Luật (UEL)", value=True)
-        src_lhn = st.checkbox("Đại học Luật Hà Nội", value=True)
-        src_qghn = st.checkbox("Đại học Quốc gia Hà Nội", value=True)
-        src_lhue = st.checkbox("Đại học Luật – Đại học Huế", value=True)
-        st.caption("Quốc tế")
+        src_gsc = st.checkbox("Thư viện Khoa học Tổng hợp TP.HCM", value=True)
+
+        st.caption("Cơ sở dữ liệu quốc tế")
         src_hein = st.checkbox("HeinOnline", value=True)
         src_west = st.checkbox("Westlaw", value=True)
-        st.caption("Pháp quy & Mở rộng")
+        src_oxf = st.checkbox("Oxford Academic", value=True)
+
+        st.caption("Nguồn văn bản pháp luật")
         src_lvn = st.checkbox("Luật Việt Nam", value=True)
         src_tvpl = st.checkbox("Thư Viện Pháp Luật", value=True)
+
+        st.caption("Các Website, CSDL chuyên ngành, đơn vị khác")
+        src_gg = st.checkbox("Google", value=True)
+        src_ggs = st.checkbox("Google Scholar", value=True)
         
         st.markdown("</div><br>", unsafe_allow_html=True)
         st.markdown("<div class='btn-green'>", unsafe_allow_html=True)
