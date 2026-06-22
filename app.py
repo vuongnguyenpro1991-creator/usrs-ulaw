@@ -22,7 +22,7 @@ if 'search_clicked' not in st.session_state:
 
 # Khởi tạo trạng thái ngôn ngữ tra cứu mặc định
 if 'applied_search_mode' not in st.session_state:
-    st.session_state.applied_search_mode = "Tiếng Việt & Tiếng Anh (Quốc tế)"
+    st.session_state.applied_search_mode = "Tiếng Việt & Tiếng Anh"
 
 # Khởi tạo bộ nhớ tạm để tự động xóa trắng ô nhập liệu sau khi Enter
 if 'input_vn_widget' not in st.session_state: st.session_state.input_vn_widget = ""
@@ -55,7 +55,7 @@ def call_gemini(topic, mode):
         
         # ĐIỀU HƯỚNG AI DỰA TRÊN TÙY CHỌN NGÔN NGỮ CỦA NGƯỜI DÙNG
         mode_instruction = ""
-        if mode == "Chỉ Tiếng Việt":
+        if mode == "Tiếng Việt":
             mode_instruction = """
 5. PHẠM VI NGÔN NGỮ: Người dùng CHỈ yêu cầu tra cứu bằng Tiếng Việt.
 - "tu_khoa_en" BẮT BUỘC là mảng rỗng [].
@@ -195,15 +195,22 @@ with col1:
         topic = st.text_input("Tên đề tài nghiên cứu *", placeholder="Nhập tên đề tài...")
         author = st.text_input("Tên người/nhóm yêu cầu *", placeholder="Nhập tên người yêu cầu...")
         
-        st.caption("Khoảng thời gian xuất bản")
-        c1, c2 = st.columns(2)
-        with c1: year_start = st.number_input("Từ", value=2020, step=1, label_visibility="collapsed")
-        with c2: year_end = st.number_input("Đến", value=2026, step=1, label_visibility="collapsed")
+        # THAY ĐỔI: KHOẢNG THỜI GIAN XUẤT BẢN MẶC ĐỊNH LÀ TÌM TẤT CẢ CÁC NĂM
+        st.markdown("<small style='color:#5f6368; font-weight:600;'>Khoảng thời gian xuất bản</small>", unsafe_allow_html=True)
+        apply_year_filter = st.checkbox("Giới hạn mốc thời gian", value=False)
+        
+        if apply_year_filter:
+            c1, c2 = st.columns(2)
+            with c1: year_start = st.number_input("Từ năm", value=2020, step=1)
+            with c2: year_end = st.number_input("Đến năm", value=2026, step=1)
+        else:
+            year_start, year_end = None, None
+            st.caption("🌐 Thiết lập: Tra cứu tất cả các năm")
         
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # TÙY CHỌN NGÔN NGỮ TRA CỨU
-        search_mode = st.radio("🌐 Phạm vi ngôn ngữ tra cứu:", ["Chỉ Tiếng Việt", "Tiếng Việt & Tiếng Anh (Quốc tế)"], horizontal=True)
+        # THAY ĐỔI: GIAO DIỆN NGÔN NGỮ TRA CỨU MỚI TINH GỌN
+        search_mode = st.radio("🌐 Ngôn ngữ tra cứu:", ["Tiếng Việt", "Tiếng Việt & Tiếng Anh"], horizontal=True)
         
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("<div class='btn-blue'>", unsafe_allow_html=True)
@@ -211,19 +218,19 @@ with col1:
             if topic.strip() == "": st.error("Vui lòng nhập Tên đề tài!")
             else:
                 st.session_state.search_clicked = False 
-                st.session_state.applied_search_mode = search_mode # Ghi nhớ tùy chọn
+                st.session_state.applied_search_mode = search_mode 
                 with st.spinner("🤖 AI đang phân tích dữ liệu..."):
                     if call_gemini(topic, search_mode): st.success("✅ Phân tích thành công!")
         st.markdown("</div>", unsafe_allow_html=True)
 
-# ==================== CỘT 2: KHỐI TỪ KHÓA (ẨN/HIỆN THÔNG MINH) ====================
+# ==================== CỘT 2: KHỐI TỪ KHÓA ====================
 with col2:
     with st.container(border=True):
         st.markdown("<div class='card-header'>💡 2. AI ĐỀ XUẤT TỪ KHÓA</div>", unsafe_allow_html=True)
         ai = st.session_state.ai_data
         st.multiselect("Chuyên ngành luật", ai.get("chuyen_nganh", []), default=ai.get("chuyen_nganh", []))
         
-        # --- KHỐI TIẾNG VIỆT (Luôn hiển thị) ---
+        # --- TIẾNG VIỆT ---
         sel_vn = st.multiselect("Từ khóa tiếng Việt", ai.get("tu_khoa_vn", []), default=ai.get("tu_khoa_vn", []))
         st.text_input("➕ Thêm từ khác, sau đó nhấn Enter để thêm từ:", key="input_vn_widget", on_change=on_add_vn, placeholder="VD: giao dịch bảo đảm...")
 
@@ -236,11 +243,11 @@ with col2:
                 core_kw = sel_vn[0]
                 for sec_kw in sel_vn[1:]: vn_text += f'"{core_kw}" AND "{sec_kw}"\n'
                     
-            st.caption("✍️ Tùy chỉnh chuỗi lệnh tra cứu (có thể gõ thêm/xóa bớt):")
+            st.caption("✍ shrink_box Lệnh tra cứu Tiếng Việt (Có thể sửa trực tiếp):")
             st.text_area("Lệnh TV", value=vn_text.strip(), height=160, key="ta_vn", label_visibility="collapsed")
         
-        # --- KHỐI TIẾNG ANH & QUỐC TẾ (Chỉ hiển thị khi người dùng chọn) ---
-        if st.session_state.applied_search_mode == "Tiếng Việt & Tiếng Anh (Quốc tế)":
+        # --- TIẾNG ANH & QUỐC TẾ (Ẩn hiện thông minh theo cấu hình radio) ---
+        if st.session_state.applied_search_mode == "Tiếng Việt & Tiếng Anh":
             st.markdown("<hr style='margin:15px 0; border-top: 1px dashed #cbd5e1;'>", unsafe_allow_html=True)
             
             sel_en = st.multiselect("Từ khóa tiếng Anh", ai.get("tu_khoa_en", []), default=ai.get("tu_khoa_en", []))
@@ -255,7 +262,7 @@ with col2:
                     core_kw_en = sel_en[0]
                     for sec_kw_en in sel_en[1:]: en_text += f'"{core_kw_en}" AND "{sec_kw_en}"\n'
                         
-                st.caption("✍️ Tùy chỉnh chuỗi lệnh tra cứu Tiếng Anh:")
+                st.caption("✍ shrink_box Lệnh tra cứu Tiếng Anh (Có thể sửa trực tiếp):")
                 st.text_area("Lệnh EN", value=en_text.strip(), height=160, key="ta_en", label_visibility="collapsed")
             
             # Khối Đặc thù Quốc tế
@@ -270,10 +277,9 @@ with col2:
                         dt_text += "\n🔸 ĐỐI CHIẾU BỐI CẢNH QUỐC TẾ:\n"
                         dt_text += f'"{sel_vn[0]}" AND "{sel_dac_thu[0]}"'
                         
-                    st.caption("✍️ Tùy chỉnh chuỗi lệnh tra cứu đặc thù:")
+                    st.caption("✍ shrink_box Lệnh tra cứu Đặc thù (Có thể sửa trực tiếp):")
                     st.text_area("Lệnh Đặc thù", value=dt_text.strip(), height=130, key="ta_dt", label_visibility="collapsed")
 
-        # Nút Khôi phục / Xác nhận
         st.markdown("<br>", unsafe_allow_html=True)
         cb1, cb2 = st.columns(2)
         with cb1:
@@ -358,3 +364,11 @@ with col4:
                 st.snow()
                 st.success("🎉 Đã xuất file báo cáo thành công!")
             st.markdown("</div>", unsafe_allow_html=True)
+
+st.markdown("---")
+f1, f2, f3, f4, f5 = st.columns(5)
+with f1: st.markdown("🚀 **Tự động hóa 80-90%**<br><small>Tiết kiệm thời gian tra cứu</small>", unsafe_allow_html=True)
+with f2: st.markdown("🧠 **AI thông minh**<br><small>Đề xuất từ khóa chính xác</small>", unsafe_allow_html=True)
+with f3: st.markdown("🛡️ **Kết quả chính xác**<br><small>Lọc trùng lặp, ưu tiên nguồn</small>", unsafe_allow_html=True)
+with f4: st.markdown("📄 **Báo cáo chuẩn ULAW**<br><small>Định dạng chính xác, thống kê</small>", unsafe_allow_html=True)
+with f5: st.markdown("🕒 **Lưu trữ & Tái sử dụng**<br><small>Lịch sử tra cứu, clone dễ dàng</small>", unsafe_allow_html=True)
