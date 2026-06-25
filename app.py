@@ -55,7 +55,7 @@ def on_add_en():
 def call_gemini(topic, mode):
     try:
         genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-        model = genai.GenerativeModel('gemini-1.5-flash') # Đã sửa thành model ổn định trên cloud
+        model = genai.GenerativeModel('gemini-3.5-flash') # Đã sửa thành model ổn định trên cloud
         mode_instruction = ""
         if mode == "Tiếng Việt":
             mode_instruction = """
